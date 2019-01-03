@@ -2,18 +2,18 @@
  * MIG test messages
  */
 
-typename int8   = 1;
-typename int16  = 2;
-typename int32  = 4;
-typename int64  = 8;
-typename uint8  = 1;
-typename uint16 = 2;
-typename uint32 = 4;
-typename uint64 = 8;
-typename bool   = 1;
-typename string = var;
-typename blob   = var;
-typename void   = 0;
+type int8   = 1;
+type int16  = 2;
+type int32  = 4;
+type int64  = 8;
+type uint8  = 1;
+type uint16 = 2;
+type uint32 = 4;
+type uint64 = 8;
+type bool   = 1;
+type string = var;
+type blob   = var;
+type void   = 0;
 
 // enum with two values
 enum TestEnum1 {

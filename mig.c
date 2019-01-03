@@ -27,6 +27,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define HASH_TABLE_SIZE 32
+
+union hash_key {
+  int id;
+  const char *name;
+};
+
+struct hash_node {
+  struct hash_node *next;
+  union hash_key key;
+};
+
+typedef struct hash_node *hash_table[HASH_TABLE_SIZE];
+
 static struct parameter *flip_parameters(struct parameter *, int *);
 static struct enumerator *flip_enumerators(struct enumerator *, int *);
 static struct element *flip_elements(struct element *, int *);
@@ -263,21 +277,6 @@ int mig_find_type(const char *name)
   return (ret)?1:0;
 }
 
-int mig_add_type(const char *name)
-{
-  int ret = 0;
-  const char *typename;
-  union hash_key typekey;
-  
-  if (name) {
-    typename = strdup(name);
-    typekey.name = typename;
-    ret = hash_table_add(type_table, &typekey, name2hash);
-    //printf("%s(%s)=%d\n",__func__,typekey.name,ret);
-  }
-  return ret;
-}
-
 int mig_add_element(const struct element *ep)
 {
   int ret = 0;
@@ -299,9 +298,26 @@ int mig_add_element(const struct element *ep)
 }
 
 struct element *
+mig_creat_datatype(const char *name, int size)
+{
+  struct element *ep = malloc(sizeof(*ep));
+
+  if (ep) {
+    ep->next = NULL;
+    ep->type = ET_DATATYPE;
+    ep->name = strdup(name);
+
+    ep->datatype.name = ep->name;
+    ep->datatype.size = size;
+  }
+  
+  return ep;
+}
+
+
+struct element *
 mig_creat_message(const char *name, int id, struct parameter *parameters)
 {
-
   struct element *ep = malloc(sizeof(*ep));
 
   if (ep) {
@@ -320,7 +336,6 @@ mig_creat_message(const char *name, int id, struct parameter *parameters)
 struct element *
 mig_creat_enumeration(const char *name, struct enumerator *enumerators)
 {
-
   struct element *ep = malloc(sizeof(*ep));
 
   if (ep) {
@@ -338,7 +353,6 @@ mig_creat_enumeration(const char *name, struct enumerator *enumerators)
 struct element *
 mig_creat_group(const char *name, struct parameter *parameters)
 {
-
   struct element *ep = malloc(sizeof(*ep));
 
   if (ep) {
@@ -356,7 +370,6 @@ mig_creat_group(const char *name, struct parameter *parameters)
 struct enumerator *
 mig_creat_enumerator(const char *name, int value)
 {
-
   struct enumerator *ep = malloc(sizeof(*ep));
  
   if (ep) {
@@ -375,7 +388,6 @@ mig_creat_parameter(const char *type,
                     int optional,
                     int repeated )
 {
-
   struct parameter *ep = malloc(sizeof(*ep));
 
   if (ep) {

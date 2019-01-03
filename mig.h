@@ -26,25 +26,14 @@
  
 */
 
+/* top level elements in message definition file */
+
 enum element_type {
+  ET_DATATYPE,
   ET_MESSAGE,
   ET_ENUM,
   ET_GROUP
 };
-
-#define HASH_TABLE_SIZE 32
-
-union hash_key {
-  int id;
-  const char *name;
-};
-
-struct hash_node {
-  struct hash_node *next;
-  union hash_key key;
-};
-
-typedef struct hash_node *hash_table[HASH_TABLE_SIZE];
 
 struct parameter {
   struct parameter *next;
@@ -59,6 +48,11 @@ struct enumerator {
   struct enumerator *next;
   const char *name;
   int value;
+};
+
+struct datatype {
+  const char *name;
+  int size;
 };
 
 struct message {
@@ -81,17 +75,20 @@ struct group {
   int nparameters;
 };
 
+
 struct element {
   struct element *next;
   enum element_type type;
   const char *name;
   union {
+    struct datatype datatype;
     struct message message;
     struct enumeration enumeration;
     struct group group;
   };
 };
 
+struct element *mig_creat_datatype(const char *, int);
 struct element *mig_creat_message(const char *, int, struct parameter *);
 struct element *mig_creat_enumeration(const char *, struct enumerator *);
 struct element *mig_creat_group(const char *, struct parameter *);
@@ -102,7 +99,6 @@ void mig_init(void);
 int mig_find_type(const char *);
 int mig_find_msg(int);
 int mig_add_element(const struct element *);
-int mig_add_type(const char *);
 
 void mig_generate_code( struct element *head );
 

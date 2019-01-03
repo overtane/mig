@@ -74,9 +74,9 @@ repeated  {
   return KW_REPEATED;
 }
 
-typename  {
-  yylval.number = KW_TYPENAME;
-  return KW_TYPENAME;
+type  {
+  yylval.number = KW_DATATYPE;
+  return KW_DATATYPE;
 }
 
 var  {
