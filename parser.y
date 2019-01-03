@@ -91,9 +91,9 @@ rpt_spec
   ;
 
 message
-  : KW_MESSAGE IDENTIFIER INTEGER '{' parameters '}' 
+  : KW_MESSAGE IDENTIFIER '=' INTEGER '{' parameters '}' 
     {
-      $$ = mig_creat_message( $2, $3, $5 );
+      $$ = mig_creat_message( $2, $4, $6 );
     }
   ;
 
