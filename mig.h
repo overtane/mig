@@ -1,3 +1,6 @@
+#ifndef MIG_H
+#define MIG_H
+
 /* 
    Messaging Interface Generator
 
@@ -22,30 +25,26 @@
    SOFTWARE.
  
 */
-#ifndef MIG_H
-#define MIG_H
-
-enum parameter_type {
-  PT_INT8,
-  PT_INT16,
-  PT_INT32,
-  PT_INT64,
-  PT_UINT8,
-  PT_UINT16,
-  PT_UINT32,
-  PT_UINT64,
-  PT_BOOL,
-  PT_BLOB,
-  PT_STRING,
-  PT_ENUM,
-  PT_GROUP
-};
 
 enum element_type {
   ET_MESSAGE,
   ET_ENUM,
   ET_GROUP
 };
+
+#define HASH_TABLE_SIZE 32
+
+union hash_key {
+  int id;
+  const char *name;
+};
+
+struct hash_node {
+  struct hash_node *next;
+  union hash_key key;
+};
+
+typedef struct hash_node *hash_table[HASH_TABLE_SIZE];
 
 struct parameter {
   struct parameter *next;
@@ -85,6 +84,7 @@ struct group {
 struct element {
   struct element *next;
   enum element_type type;
+  const char *name;
   union {
     struct message message;
     struct enumeration enumeration;
@@ -97,6 +97,12 @@ struct element *mig_creat_enumeration(const char *, struct enumerator *);
 struct element *mig_creat_group(const char *, struct parameter *);
 struct enumerator *mig_creat_enumerator(const char *, int);
 struct parameter *mig_creat_parameter(const char*, const char *, int, int, int);
+
+void mig_init(void);
+int mig_find_type(const char *);
+int mig_find_msg(int);
+int mig_add_element(const struct element *);
+int mig_add_type(const char *);
 
 void mig_generate_code( struct element *head );
 

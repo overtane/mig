@@ -44,8 +44,8 @@
 
 %token <string> IDENTIFIER 
 %token <number> INTEGER
-%token <string> KW_MESSAGE KW_GROUP KW_ENUM 
-%token <number> KW_OPTIONAL KW_REPEATED
+%token <number> KW_MESSAGE KW_GROUP KW_ENUM KW_TYPENAME
+%token <number> KW_OPTIONAL KW_REPEATED KW_VAR
 
 %type <parameter> parameter parameters
 %type <enumerator> enumerator enumerators
@@ -55,6 +55,18 @@
 
 %%
 
+typename
+  : KW_TYPENAME IDENTIFIER '=' alloc ';'
+    {
+        mig_add_type( $2 );
+    }
+  ;
+
+alloc
+  : INTEGER
+  | KW_VAR
+  ;
+
 parameters
   : /* empty */ { $$ = NULL }
   | parameters parameter { $2->next = $1; $$ = $2; }
@@ -63,6 +75,8 @@ parameters
 parameter
   : IDENTIFIER IDENTIFIER '=' INTEGER attribute_spec ';'
     {
+      if ( !mig_find_type($1) )
+          yyerror("Unknown typename");
       $$ = mig_creat_parameter( $1, $2, $4, optional, repeated );
     }
   ;
@@ -93,14 +107,22 @@ rpt_spec
 message
   : KW_MESSAGE IDENTIFIER '=' INTEGER '{' parameters '}' 
     {
+      if ( mig_find_type($2) )
+          yyerror("Duplicate type name");
+      if ( mig_find_msg($4) )
+          yyerror("Duplicate message id");
       $$ = mig_creat_message( $2, $4, $6 );
+      mig_add_element($$);
     }
   ;
 
 enumeration
   : KW_ENUM IDENTIFIER '{' enumerators '}'
     {
+      if (mig_find_type($2))
+          yyerror("Duplicate type name");
       $$ = mig_creat_enumeration( $2, $4 );
+      mig_add_element($$);
     }
   ;
 
@@ -119,12 +141,16 @@ enumerator
 group
   : KW_GROUP IDENTIFIER '{' parameters '}'
     {
+      if (mig_find_type($2))
+          yyerror("Duplicate type name");
       $$ = mig_creat_group( $2, $4 );
+      mig_add_element($$);
     }
   ;
 
 elements
   : /* empty */ { $$ = NULL }
+  | elements typename { }
   | elements message { $2->next = $1; $$ = $2; }
   | elements enumeration { $2->next = $1; $$ = $2; }
   | elements group { $2->next = $1; $$ = $2; }
@@ -151,6 +177,7 @@ main (int argc, char const* argv[])
   for (i = 1; i < argc; ++i)
     if (!strcmp(argv[i], "-p"))
       yydebug = 1;
+  mig_init();
   yyparse ();
   return 0;
 }

@@ -74,6 +74,16 @@ repeated  {
   return KW_REPEATED;
 }
 
+typename  {
+  yylval.number = KW_TYPENAME;
+  return KW_TYPENAME;
+}
+
+var  {
+  yylval.number = KW_VAR;
+  return KW_VAR;
+}
+
 -?{digit}+  {
   yylval.number = strtol(yytext, NULL, 10);
   /* TODO check error */

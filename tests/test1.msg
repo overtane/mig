@@ -2,6 +2,19 @@
  * MIG test messages
  */
 
+typename int8   = 1;
+typename int16  = 2;
+typename int32  = 4;
+typename int64  = 8;
+typename uint8  = 1;
+typename uint16 = 2;
+typename uint32 = 4;
+typename uint64 = 8;
+typename bool   = 1;
+typename string = var;
+typename blob   = var;
+typename void   = 0;
+
 // enum with two values
 enum TestEnum1 {
   VALUE1 = 0;
@@ -37,6 +50,4 @@ message TestMessage1004 = 0x1004 {
   uint8 Param3 = 2 [ optional,optional, repeated, optional, repeated, repeated ]; 
   blob Param4 = 3 ; 
 }
-
-
 
