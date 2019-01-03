@@ -19,6 +19,8 @@ parser.o: parser.c parser.h mig.h
 parser.c: parser.y mig.h
 	bison -d -t -o parser.c parser.y
 
+all: mig
+
 clean:
 	rm parser.h parser.c parser.o
 	rm scanner.c scanner.o

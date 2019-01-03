@@ -32,11 +32,9 @@ static struct enumerator *flip_enumerators(struct enumerator *, int *);
 static struct element *flip_elements(struct element *, int *);
 static void dump_elements( struct element *head );
 
-
 void dump_elements( struct element *head ) {
 
-  int n;
-  struct element *ep = flip_elements( head, &n );
+  struct element *ep = head;
 
   while (ep) {
     switch (ep->type) {
@@ -44,7 +42,14 @@ void dump_elements( struct element *head ) {
         struct parameter *pp = ep->message.parameters;
         printf("Message %s (Ox%04X)\n", ep->message.name, ep->message.id);
         while (pp) {
-          printf("- parameter %s %s (%d)\n", pp->type, pp->name, pp->id);
+          printf("- parameter %s %s (%d) [%s]\n", 
+            pp->type,
+            pp->name,
+            pp->id,
+            (pp->optional)?
+              (pp->repeated)? "optional,repeated" : "optional" :
+              (pp->repeated)? "repeated" : ""
+          );
           pp = pp->next;
         }
         break;
@@ -54,7 +59,7 @@ void dump_elements( struct element *head ) {
         struct parameter *pp = ep->group.parameters;
         printf("Group %s\n", ep->group.name);
         while (pp) {
-          printf("- parameter %s %s (%d)\n", pp->type, pp->name, pp->id);
+          printf("- %s %s (%d)\n", pp->type, pp->name, pp->id);
           pp = pp->next;
         }
         break;
@@ -64,7 +69,7 @@ void dump_elements( struct element *head ) {
         struct enumerator *pp = ep->enumeration.enumerators;;
         printf("Enum %s\n", ep->enumeration.name);
         while (pp) {
-          printf("- enumerator %s = %d\n", pp->name, pp->value);
+          printf("- %s = %d\n", pp->name, pp->value);
           pp = pp->next;
         }
         break;
@@ -198,7 +203,7 @@ struct parameter *
 mig_creat_parameter(const char *type,
                     const char *name,
                     int id,
-                    int required,
+                    int optional,
                     int repeated )
 {
 
@@ -209,7 +214,7 @@ mig_creat_parameter(const char *type,
     ep->name = strdup(name);
     ep->type = strdup(type);
     ep->id = id;
-    ep->required = required;
+    ep->optional = optional;
     ep->repeated = repeated;
   }
 

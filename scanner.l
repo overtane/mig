@@ -64,11 +64,6 @@ enum     {
   return KW_ENUM;
 }
 
-required  { 
-  yylval.number = KW_REQUIRED;
-  return KW_REQUIRED;
-}
-
 optional  {
   yylval.number = KW_OPTIONAL;
   return KW_OPTIONAL;
@@ -96,7 +91,7 @@ repeated  {
   /* TODO check error */
   return IDENTIFIER;
 }
-[={};[\]] {
+[,={};[\]] {
   return yytext[0];
 }
 

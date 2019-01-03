@@ -52,7 +52,7 @@ struct parameter {
   const char *name;
   int id;
   const char *type;
-  int required;
+  int optional;
   int repeated;
 };
 
@@ -92,11 +92,11 @@ struct element {
   };
 };
 
-struct element *mig_creat_message(const char *name, int id, struct parameter *);
-struct element *mig_creat_enumeration(const char *name, struct enumerator *);
-struct element *mig_creat_group(const char *name, struct parameter *);
-struct enumerator *mig_creat_enumerator(const char *name, int value);
-struct parameter *mig_creat_parameter(const char* type, const char *name, int id, int required, int repeated );
+struct element *mig_creat_message(const char *, int, struct parameter *);
+struct element *mig_creat_enumeration(const char *, struct enumerator *);
+struct element *mig_creat_group(const char *, struct parameter *);
+struct enumerator *mig_creat_enumerator(const char *, int);
+struct parameter *mig_creat_parameter(const char*, const char *, int, int, int);
 
 void mig_generate_code( struct element *head );
 

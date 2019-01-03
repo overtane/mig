@@ -31,7 +31,7 @@
   #include <string.h>
   int yylex (void);
   void yyerror (char const *);
-  int required, repeated;
+  int optional, repeated;
 %}
 
 %union {
@@ -45,7 +45,7 @@
 %token <string> IDENTIFIER 
 %token <number> INTEGER
 %token <string> KW_MESSAGE KW_GROUP KW_ENUM 
-%token <number> KW_REQUIRED KW_OPTIONAL KW_REPEATED
+%token <number> KW_OPTIONAL KW_REPEATED
 
 %type <parameter> parameter parameters
 %type <enumerator> enumerator enumerators
@@ -61,24 +61,33 @@ parameters
   ;
 
 parameter
-  : occurrence_specifier IDENTIFIER IDENTIFIER '=' INTEGER ';'
+  : IDENTIFIER IDENTIFIER '=' INTEGER attribute_spec ';'
     {
-      $$ = mig_creat_parameter( $2, $3, $5, required, repeated );
+      $$ = mig_creat_parameter( $1, $2, $4, optional, repeated );
     }
   ;
 
-occurrence_specifier
-  : need_specifier count_specifier 
+attribute_spec
+  : /* empty */ { optional = 0, repeated = 0 } 
+  | '[' attributes ']' 
   ;
 
-need_specifier
-  : KW_REQUIRED { required = 1; }
-  | KW_OPTIONAL { required = 0; }
+attributes
+  : attribute
+  | attributes ',' attribute
   ;
 
-count_specifier
-  : { repeated = 0; }
-  | KW_REPEATED { repeated = 1; }
+attribute
+  : opt_spec
+  | rpt_spec 
+  ;
+
+opt_spec
+  : KW_OPTIONAL { optional = 1; }
+  ;
+
+rpt_spec
+  : KW_REPEATED { repeated = 1; }
   ;
 
 message
