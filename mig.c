@@ -165,7 +165,7 @@ void dump_elements( struct element *head ) {
             pp->id,
             (pp->optional)?
               (pp->repeated)? "optional,repeated" : "optional" :
-              (pp->repeated)? "repeated" : ""
+              (pp->repeated)? "required,repeated" : "required"
           );
           pp = pp->next;
         }

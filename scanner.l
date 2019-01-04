@@ -50,18 +50,24 @@ whitespace [ \t\n]
 
 
 message  { 
+  yylval.string = strdup(yytext);
   yylval.number = KW_MESSAGE;
   return KW_MESSAGE;
 }
 
 group    { 
-  yylval.number = KW_GROUP;
+  yylval.string = strdup(yytext);
   return KW_GROUP;
 }
 
 enum     {
-  yylval.number = KW_ENUM;
+  yylval.string = strdup(yytext);
   return KW_ENUM;
+}
+
+type  {
+  yylval.string = strdup(yytext);
+  return KW_DATATYPE;
 }
 
 optional  {
@@ -72,11 +78,6 @@ optional  {
 repeated  {
   yylval.number = KW_REPEATED;
   return KW_REPEATED;
-}
-
-type  {
-  yylval.number = KW_DATATYPE;
-  return KW_DATATYPE;
 }
 
 var  {

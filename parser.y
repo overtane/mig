@@ -44,26 +44,32 @@
 
 %token <string> IDENTIFIER 
 %token <number> INTEGER
-%token <number> KW_MESSAGE KW_GROUP KW_ENUM KW_DATATYPE
+%token <string> KW_MESSAGE KW_GROUP KW_ENUM KW_DATATYPE
 %token <number> KW_OPTIONAL KW_REPEATED KW_VAR
 
 %type <parameter> parameter parameters
 %type <enumerator> enumerator enumerators
 %type <element> elements datatype message enumeration group
 %type <number> alloc
+%type <string> typename
 
 %start all 
 
 %%
 
 datatype
-  : KW_DATATYPE IDENTIFIER '=' alloc ';'
+  : KW_DATATYPE typename '=' alloc ';'
     {
       if ( mig_find_type($2) )
           yyerror("Duplicate type name");
       $$ = mig_creat_datatype( $2, $4 );
       mig_add_element( $$ );
     }
+  ;
+
+typename
+  : KW_ENUM
+  | IDENTIFIER
   ;
 
 alloc
