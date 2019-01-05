@@ -1,6 +1,7 @@
 # ifndef _MIG_TEMPLATES_H_
 # define _MIG_TEMPLATES_H_
 
+#include <vector>
 #include <cstdint>
 #include <cstddef>
 
@@ -23,7 +24,8 @@ class Message {
 };
 
 typedef uint8_t enum_t;
-typedef struct {}  void_t;
+typedef std::vector<uint8_t> blob_t; 
+struct void_t {};
 
 template <class T>
 class simple_parameter
@@ -88,9 +90,56 @@ class group_parameter
 
     bool is_set() const { return this->exists; } 
     bool is_optional() const { return this->optional; } 
-    void set(T data) { this->data = data; this->exists = true; }
+    void set(T data) { this->data = data; this->exists = true; } // TODO set reference!
     T& get() { return this->data; } // What is not defined yet?
     std::size_t size() const { return (this->is_set()) ? this->data.size(): 0; }
+    uint16_t id() { return this->par_id; }
+};
+
+
+template <class T>
+class string_parameter
+{   
+    uint16_t par_id;
+    bool optional;
+    bool exists;
+    T data;
+
+  public:
+    string_parameter(int id, bool optional=false) :
+        par_id(id),
+        optional(optional),
+        exists(false)
+    {}
+
+    bool is_set() const { return this->exists; } 
+    bool is_optional() const { return this->optional; } 
+    void set(T data) { this->data = data; this->exists = true; } // TODO reference?
+    T& get() { return this->data; } // What is not defined yet?
+    std::size_t size() const { return (this->is_set()) ? this->data.size()+1: 0; }
+    uint16_t id() { return this->par_id; }
+};
+
+template <class T>
+class data_parameter
+{   
+    uint16_t par_id;
+    bool optional;
+    bool exists;
+    T data;
+
+  public:
+    data_parameter(int id, bool optional=false) :
+        par_id(id),
+        optional(optional),
+        exists(false)
+    {}
+
+    bool is_set() const { return this->exists; } 
+    bool is_optional() const { return this->optional; } 
+    void set(T data) { this->data = data; this->exists = true; } // TODO set reference
+    T& get() { return this->data; } // What is not defined yet?
+    std::size_t size() const { return (this->is_set()) ? this->data.size() : 0; }
     uint16_t id() { return this->par_id; }
 };
 
