@@ -26,6 +26,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef DEBUG
+#include <assert.h>
+#else
+#define assert(p)
+#endif
 
 #define HASH_TABLE_SIZE 32
 
@@ -37,6 +42,7 @@ union hash_key {
 struct hash_node {
   struct hash_node *next;
   union hash_key key;
+  void *item;
 };
 
 typedef struct hash_node *hash_table[HASH_TABLE_SIZE];
@@ -56,7 +62,26 @@ static int hash_table_add(hash_table, union hash_key *, hash_func);
 static hash_table type_table;
 static hash_table msg_table;
 
+/*! \brief Count the number of nodes in a hash table 
+ * 
+ * Note: Slow, mainly for testing purposes
+ * \param pointer to a hash table
+ * \return number of nodes in the table 
+ */
+static int hash_table_size(hash_table ht)
+{
+  int i, n=0;
+  for (i=0; i<HASH_TABLE_SIZE; i++) {
+    struct hash_node *node = ht[i];
+    while (node) {
+      n++;
+      node = node->next;
+    }
+  }
+  return n;
+}
 
+/*! \brief Calculate hash value for a string key */
 static int name2hash(union hash_key *key)
 {
   int k = 0;
@@ -69,11 +94,13 @@ static int name2hash(union hash_key *key)
   return k % HASH_TABLE_SIZE;
 }
 
+/*! \brief Calculate hash value for integer key */
 static int id2hash(union hash_key *key)
 {
   return key->id % HASH_TABLE_SIZE;
 }
 
+/*!  */
 static int namecmp(union hash_key *key1, union hash_key *key2)
 {
   const char *name1 = key1->name;
@@ -86,6 +113,7 @@ static int namecmp(union hash_key *key1, union hash_key *key2)
   return strncmp(name1, name2, (n1<n2)?n1:n2);
 }
 
+/* */
 static int idcmp(union hash_key *key1, union hash_key *key2) 
 {
   int ret;
@@ -100,12 +128,20 @@ static int idcmp(union hash_key *key1, union hash_key *key2)
   return ret;
 }
 
+/*! */
 void hash_table_init(hash_table ht) 
 {
-  int i;
+  int i, n;
 
-  for (i=0; i<HASH_TABLE_SIZE; i++)
-    ht[i] = NULL;
+  assert(ht != 0);
+
+  if (ht) {
+    for (i=0; i<HASH_TABLE_SIZE; i++)
+      ht[i] = NULL;
+
+    n=hash_table_size(ht);
+  }
+  assert(n==0);
 }
 
 void *hash_table_search(hash_table ht, union hash_key *key, hash_func h, comp_func c)
@@ -125,18 +161,20 @@ void *hash_table_search(hash_table ht, union hash_key *key, hash_func h, comp_fu
   return NULL;
 }
 
+/*! */
 int hash_table_add(hash_table ht, union hash_key *key, hash_func h)
 {
   int hash = (*h)(key);
 
   // assert hash < HASH_TABLE_SIZE
 
-  struct hash_node *node = malloc(sizeof(*node));
+  struct hash_node *node = (struct hash_node *)malloc(sizeof(*node));
   
   if (node) {
     node->next = NULL;
     memcpy((void *)&node->key, (void *)key, sizeof(*key));
-  
+    node->item = NULL; // TODO add item  
+
     if (!ht[hash]) {
       ht[hash] = node;
     } else {
@@ -280,12 +318,12 @@ int mig_find_type(const char *name)
 int mig_add_element(const struct element *ep)
 {
   int ret = 0;
-  const char *typename;
+  const char *type_name;
   union hash_key typekey;
   
   if (ep) {
-    typename = strdup(ep->name);
-    typekey.name = typename;
+    type_name = strdup(ep->name);
+    typekey.name = type_name;
     ret = hash_table_add(type_table, &typekey, name2hash);
     //printf("%s(%s)=%d\n",__func__,typekey.name,ret);
     if (ep->type == ET_MESSAGE) {
@@ -300,7 +338,7 @@ int mig_add_element(const struct element *ep)
 struct element *
 mig_creat_datatype(const char *name, int size)
 {
-  struct element *ep = malloc(sizeof(*ep));
+  struct element *ep = (struct element *)malloc(sizeof(*ep));
 
   if (ep) {
     ep->next = NULL;
@@ -318,7 +356,7 @@ mig_creat_datatype(const char *name, int size)
 struct element *
 mig_creat_message(const char *name, int id, struct parameter *parameters)
 {
-  struct element *ep = malloc(sizeof(*ep));
+  struct element *ep = (struct element *)malloc(sizeof(*ep));
 
   if (ep) {
     ep->next = NULL;
@@ -336,7 +374,7 @@ mig_creat_message(const char *name, int id, struct parameter *parameters)
 struct element *
 mig_creat_enumeration(const char *name, struct enumerator *enumerators)
 {
-  struct element *ep = malloc(sizeof(*ep));
+  struct element *ep = (struct element *)malloc(sizeof(*ep));
 
   if (ep) {
     ep->next = NULL;
@@ -353,7 +391,7 @@ mig_creat_enumeration(const char *name, struct enumerator *enumerators)
 struct element *
 mig_creat_group(const char *name, struct parameter *parameters)
 {
-  struct element *ep = malloc(sizeof(*ep));
+  struct element *ep = (struct element *)malloc(sizeof(*ep));
 
   if (ep) {
     ep->next = NULL;
@@ -370,7 +408,7 @@ mig_creat_group(const char *name, struct parameter *parameters)
 struct enumerator *
 mig_creat_enumerator(const char *name, int value)
 {
-  struct enumerator *ep = malloc(sizeof(*ep));
+  struct enumerator *ep = (struct enumerator *)malloc(sizeof(*ep));
  
   if (ep) {
     ep->next = NULL;
@@ -388,7 +426,7 @@ mig_creat_parameter(const char *type,
                     int optional,
                     int repeated )
 {
-  struct parameter *ep = malloc(sizeof(*ep));
+  struct parameter *ep = (struct parameter *)malloc(sizeof(*ep));
 
   if (ep) {
     ep->next = NULL;

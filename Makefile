@@ -21,6 +21,9 @@ parser.c: parser.y mig.h
 
 all: mig
 
+tests:
+	$(MAKE) -C tests
+
 clean:
 	rm parser.h parser.c parser.o
 	rm scanner.c scanner.o
