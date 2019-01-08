@@ -7,8 +7,10 @@ GTEST_DIR?=../../googletest/googletest
 GTEST_SRC= ${GTEST_DIR}/src/gtest-all.cc
 GTEST_OBJ=gtest-all.o
 
+all: libgtest.a testrunner
+
 libgtest.a: ${GTEST_OBJ}
-	ar -rv libgtest.a ${GTEST_OBJ} 
+	ar -rv $@ ${GTEST_OBJ} 
 
 ${GTEST_OBJ}: ${GTEST_SRC}
 	$(CPP) $(CPPFLAGS) -I${GTEST_DIR} -pthread -c ${GTEST_SRC}
@@ -16,12 +18,11 @@ ${GTEST_OBJ}: ${GTEST_SRC}
 $(OBJS): $(SRCS)
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
-tests: libgtest.a $(OBJS)
-	$(CPP) $(CPPFLAGS) -o test libgtest.a $(OBJS)
-
-all: libgtest.a tests
+testrunner: libgtest.a $(OBJS)
+	$(CPP) $(CPPFLAGS) -o $@ libgtest.a $(OBJS)
 
 clean:
 	rm libgtest.a ${GTEST_OBJ}
 	rm $(OBJS)
+	rm testrunner
 

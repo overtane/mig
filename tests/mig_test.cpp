@@ -24,24 +24,35 @@
 */
 
 #include "gtest/gtest.h"
+#include <cstdlib>
 
 extern "C" {
 #include "mig.c"
 }
 
+// 
+// HASH TABLE TESTS
+//
+
 class HashTableTest : public ::testing::Test
 {
   protected:
     void SetUp() override {
-      hash_table_init(ht1);
-      hash_table_init(ht2);
+      ht1 = hash_table_new(name2hash, namecmp);
+      ht2 = hash_table_new(id2hash, idcmp);
     }
 
-  hash_table ht1;
-  hash_table ht2;
+    void TearDown() override {
+      hash_table_delete(ht1);
+      hash_table_delete(ht2);
+    }
+ 
 
-  hash_key hk1;
-  hash_key hk2;
+  struct hash_table *ht1;
+  struct hash_table *ht2;
+
+  union hash_key hk1;
+  union hash_key hk2;
 };
 
 
@@ -49,11 +60,19 @@ TEST_F(HashTableTest, IsEmptyAndInitialized) {
   EXPECT_EQ(hash_table_size(ht1), 0);
   EXPECT_EQ(hash_table_size(ht2), 0);
 
+  EXPECT_EQ(ht1->nnodes, 0);
+  EXPECT_EQ(ht2->nnodes, 0);
+
+  EXPECT_EQ((long)ht1->hash, (long)name2hash);
+  EXPECT_EQ((long)ht1->comp, (long)namecmp);
+  EXPECT_EQ((long)ht2->hash, (long)id2hash);
+  EXPECT_EQ((long)ht2->comp, (long)idcmp);
+
   int n1=0, n2=0;
   for (int i=0; i<HASH_TABLE_SIZE; i++) {
-    if (ht1[i] != 0)
+    if (ht1->table[i] != 0)
       n1++;
-    if (ht2[i] != 0)
+    if (ht2->table[i] != 0)
       n2++;
   }
 
@@ -97,6 +116,66 @@ TEST_F(HashTableTest, IdCmpTest) {
   hk2.id = 3;
   EXPECT_GT(idcmp(&hk1,&hk2), 0);
 }
+
+TEST_F(HashTableTest, IdTableTest)
+{
+  // add sequential keys and check result
+  for (int i=0; i<3560; i++) {
+    hk2.id = i;
+    hash_table_add(ht2, &hk2);
+    EXPECT_EQ(hash_table_size(ht2), i+1);
+    EXPECT_EQ(ht2->nnodes, i+1);
+    EXPECT_NE(ht2->table[i%HASH_TABLE_SIZE], nullptr);
+  }
+  for (int i=3559; i>-1; i--) {
+    hk2.id = i;
+    struct hash_node *node = hash_table_search(ht2, &hk2);
+    EXPECT_NE(node, nullptr);
+    if (node)
+      EXPECT_EQ(node->key.id, i);
+  }
+
+
+  // add random keys and check results
+  std::srand(std::time(nullptr));
+  union hash_key hk[256];
+  for (int i=0; i<256; i++) {
+    int r = std::rand() % 24378;
+    hk[i].id = r;
+    hash_table_add(ht2, &hk[i]);
+  }
+  for (int i=0; i<256; i++) {
+    struct hash_node *node = hash_table_search(ht2, &hk[i]);
+    EXPECT_EQ(ht2->nnodes, hash_table_size(ht2));
+    EXPECT_NE(node, nullptr);
+    if (node)
+      EXPECT_EQ(node->key.id, hk[i].id);
+  }
+  
+
+  // check that sequential keys are still accessible
+  for (int i=3559; i>-1; i--) {
+    hk2.id = i;
+    struct hash_node *node = hash_table_search(ht2, &hk2);
+    EXPECT_NE(node, nullptr);
+    if (node)
+      EXPECT_EQ(node->key.id, i);
+  }
+
+
+  // check non-existent keys
+  {
+    union hash_key hk;
+    hk.id = 24380;
+    struct hash_node *node = hash_table_search(ht2, &hk);
+    EXPECT_EQ(node, nullptr);
+    hk.id = 99999;
+    node = hash_table_search(ht2, &hk);
+    EXPECT_EQ(node, nullptr);
+  }
+
+}
+
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

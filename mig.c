@@ -45,22 +45,28 @@ struct hash_node {
   void *item;
 };
 
-typedef struct hash_node *hash_table[HASH_TABLE_SIZE];
+typedef int (*comp_func)(union hash_key *, union hash_key *);
+typedef int (*hash_func)(union hash_key *);
+
+struct hash_table {
+  int nnodes;
+  comp_func comp;
+  hash_func hash;
+  struct hash_node *table[HASH_TABLE_SIZE];
+};
 
 static struct parameter *flip_parameters(struct parameter *, int *);
 static struct enumerator *flip_enumerators(struct enumerator *, int *);
 static struct element *flip_elements(struct element *, int *);
 static void dump_elements( struct element *head );
 
-typedef int (*comp_func)(union hash_key *, union hash_key *);
-typedef int (*hash_func)(union hash_key *);
+static struct hash_table *hash_table_new(hash_func, comp_func);
+static void hash_table_delete(struct hash_table *);
+static struct hash_node *hash_table_search(struct hash_table *, union hash_key *);
+static struct hash_node *hash_table_add(struct hash_table *, union hash_key *);
 
-static void hash_table_init(hash_table);
-static void *hash_table_search(hash_table, union hash_key *, hash_func, comp_func);
-static int hash_table_add(hash_table, union hash_key *, hash_func);
-
-static hash_table type_table;
-static hash_table msg_table;
+static struct hash_table *type_table;
+static struct hash_table *msg_table;
 
 /*! \brief Count the number of nodes in a hash table 
  * 
@@ -68,14 +74,16 @@ static hash_table msg_table;
  * \param pointer to a hash table
  * \return number of nodes in the table 
  */
-static int hash_table_size(hash_table ht)
+static int hash_table_size(struct hash_table *ht)
 {
   int i, n=0;
-  for (i=0; i<HASH_TABLE_SIZE; i++) {
-    struct hash_node *node = ht[i];
-    while (node) {
-      n++;
-      node = node->next;
+  if (ht) {
+    for (i=0; i<HASH_TABLE_SIZE; i++) {
+      struct hash_node *node = ht->table[i];
+      while (node) {
+        n++;
+        node = node->next;
+      }
     }
   }
   return n;
@@ -129,62 +137,86 @@ static int idcmp(union hash_key *key1, union hash_key *key2)
 }
 
 /*! */
-void hash_table_init(hash_table ht) 
+struct hash_table *hash_table_new(hash_func hash, comp_func comp) 
 {
   int i, n;
 
-  assert(ht != 0);
+  struct hash_table *ht = (struct hash_table *)malloc(sizeof(*ht));
 
   if (ht) {
+    ht->nnodes = 0;
+    ht->hash = hash;
+    ht->comp = comp;
+
     for (i=0; i<HASH_TABLE_SIZE; i++)
-      ht[i] = NULL;
+      ht->table[i] = NULL;
 
     n=hash_table_size(ht);
   }
   assert(n==0);
+
+  return ht;
 }
 
-void *hash_table_search(hash_table ht, union hash_key *key, hash_func h, comp_func c)
+static void hash_table_delete(struct hash_table *ht)
 {
-  int hash = (*h)(key);
+  int i;
 
-  // assert hash < HASH_TABLE_SIZE
-
-  struct hash_node *node = ht[hash];
-
-  while (node) {
-    if (!(*c)(key, &node->key))
-      return &node->key;
-    node = node->next;
+  for (i=0; i<HASH_TABLE_SIZE; i++) {
+    struct hash_node *curr, *next;
+    
+    curr = ht->table[i];
+    while (curr) {
+      next = curr->next;
+      free(curr);
+      curr = next;
+    }
   }
 
+  free(ht);
+}
+
+struct hash_node *hash_table_search(struct hash_table *ht, union hash_key *key)
+{
+  if (ht) {
+
+    int hash = (*ht->hash)(key);
+    struct hash_node *node; 
+
+    assert(hash>=0 && hash<HASH_TABLE_SIZE);
+
+    node = ht->table[hash];
+
+    while (node) {
+      if (!(*ht->comp)(key, &node->key))
+        return node;
+      node = node->next;
+    }
+  }
   return NULL;
 }
 
 /*! */
-int hash_table_add(hash_table ht, union hash_key *key, hash_func h)
+struct hash_node *hash_table_add(struct hash_table *ht, union hash_key *key)
 {
-  int hash = (*h)(key);
+  struct hash_node *node = NULL;
 
-  // assert hash < HASH_TABLE_SIZE
+  if (ht) {
+    int hash = (*ht->hash)(key);
 
-  struct hash_node *node = (struct hash_node *)malloc(sizeof(*node));
-  
-  if (node) {
-    node->next = NULL;
-    memcpy((void *)&node->key, (void *)key, sizeof(*key));
-    node->item = NULL; // TODO add item  
+    assert(hash >=0 && hash<HASH_TABLE_SIZE);
 
-    if (!ht[hash]) {
-      ht[hash] = node;
-    } else {
-      struct hash_node *p = ht[hash];
-      while (p->next)
-        p = p->next;
-      p->next = node;
+    node = (struct hash_node *)malloc(sizeof(*node));
+    if (node) {
+      node->next = NULL;
+      memcpy((void *)&node->key, (void *)key, sizeof(*key));
+      node->item = NULL; // TODO add item  
+      node->next = ht->table[hash];
+      ht->table[hash]=node;
+      ht->nnodes++;
     }
   }
-  return (node)?1:0;
+  return node;
 }
 
 void dump_elements( struct element *head ) {
@@ -238,6 +270,12 @@ void dump_elements( struct element *head ) {
 
 }
 
+
+/*
+ * Elements are added to list in stack order (revers)
+ * Here we flip pointers in order to preserve source code order.
+ */
+
 #define TRAVERSE_AND_FLIP_LIST(this, next, prev, n) \
   { \
     while (this) { \
@@ -287,8 +325,8 @@ flip_enumerators(struct enumerator *head, int *nenumerators)
 }
 
 void mig_init(void) {
-  hash_table_init(type_table);
-  hash_table_init(msg_table);
+  type_table = hash_table_new(name2hash, namecmp);
+  msg_table = hash_table_new(id2hash, idcmp);
 }
 
 int mig_find_msg(int id)
@@ -298,7 +336,7 @@ int mig_find_msg(int id)
 
   key.id = id;
 
-  ret = hash_table_search(msg_table, &key, id2hash, idcmp);
+  ret = hash_table_search(msg_table, &key);
   //printf("%s(%d)=%p\n",__func__,id,ret);
   return (ret)?1:0;
 }
@@ -310,29 +348,28 @@ int mig_find_type(const char *name)
 
   key.name = name;
 
-  ret = hash_table_search(type_table, &key, name2hash, namecmp);
+  ret = hash_table_search(type_table, &key);
   //printf("%s(%s)=%p\n",__func__,name,ret);
   return (ret)?1:0;
 }
 
 int mig_add_element(const struct element *ep)
 {
-  int ret = 0;
   const char *type_name;
   union hash_key typekey;
   
   if (ep) {
     type_name = strdup(ep->name);
     typekey.name = type_name;
-    ret = hash_table_add(type_table, &typekey, name2hash);
-    //printf("%s(%s)=%d\n",__func__,typekey.name,ret);
+    hash_table_add(type_table, &typekey);
     if (ep->type == ET_MESSAGE) {
       union hash_key msgkey;
       msgkey.id = ep->message.id;
-      hash_table_add(msg_table, &msgkey, id2hash);
+      hash_table_add(msg_table, &msgkey);
     }
+    return 0;
   }
-  return ret;
+  return -1;
 }
 
 struct element *
@@ -447,4 +484,8 @@ void mig_generate_code( struct element *head ) {
   struct element *ep = flip_elements( head, &n );
 
   dump_elements(ep);
+
+  hash_table_delete(type_table);
+  hash_table_delete(msg_table);
+
 }
