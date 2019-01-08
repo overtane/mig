@@ -65,6 +65,7 @@ static void hash_table_delete(struct hash_table *);
 static struct hash_node *hash_table_search(struct hash_table *, union hash_key *);
 static struct hash_node *hash_table_add(struct hash_table *, union hash_key *);
 
+/* symbol tables */ 
 static struct hash_table *type_table;
 static struct hash_table *msg_table;
 
@@ -477,13 +478,98 @@ mig_creat_parameter(const char *type,
   return ep;
 }
 
+// TODO 
+// 1. SIMPLE AND COMPLEX PARAMETERS
+// - Simple parameters: literal types, enums
+// - Complex parameters: blobs, groups, strings
+// 2. Correct types for C++ source
+// - uint8 -> uint8_t etc
+// 3. Generate functions
+// - size
+// - is_valid
+// - wire_overhead
+//
+static void generate_parameters(struct parameter *pp, FILE *of) 
+{
+  if (pp) {
+    while (pp) {
+      fprintf(of, "    ::mig::simple_parameter<%s> %s{%d%s};\n",
+        pp->type, pp->name, pp->id,
+          (pp->optional)? ", ::mig::OPTIONAL" : "" );
+      pp = pp->next;
+    }
+    fprintf(of, "\n"); 
+  }
+}
+
 
 void mig_generate_code( struct element *head ) {
 
+  FILE *of = stdout;
   int n = 0;
   struct element *ep = flip_elements( head, &n );
+  
+  //dump_elements(ep);
 
-  dump_elements(ep);
+  while (ep) {
+ 
+    switch (ep->type) {
+    case ET_MESSAGE: {
+
+        struct parameter *pp = ep->message.parameters;
+        fprintf(of, "class %s : public ::mig:Message {\n\n  public:\n", ep->message.name);
+        fprintf(of, "    %s() : ::mig:Message(0x%x) {}\n\n", ep->message.name, ep->message.id);
+
+        generate_parameters(pp, of);
+
+        fprintf(of, "    uint8_t nparameters() const {return %d;}\n", ep->message.nparameters);
+        if (ep->message.nparameters == 0) {
+          fprintf(of, "    std::size_t size() const {return wire_overhead();}\n");
+          fprintf(of, "    std::size_t wire_overhead() const {return ::mig::msg_wire_overhead;}\n");
+          fprintf(of, "    bool is_valid() const {return true;}\n");
+        } else {
+          fprintf(of, "    std::size_t size() const {return 0;} // TODO implement\n");
+          fprintf(of, "    std::size_t wire_overhead() const {return 0;} // TODO implement\n");
+          fprintf(of, "    bool is_valid() const {return false;} // TODO implement\n");
+        }
+        fprintf(of, "};\n\n\n");
+        break;
+        }
+        
+    case ET_GROUP: {
+
+        struct parameter *pp = ep->group.parameters;
+        fprintf(of, "struct %s {\n", ep->group.name);
+
+        generate_parameters(pp, of);
+
+        fprintf(of, "};\n\n\n");
+        break;
+        }
+        
+    case ET_ENUM: {
+        struct enumerator *pp = ep->enumeration.enumerators;
+        fprintf(of, "enum %s : ::mig::enum_t{\n", ep->enumeration.name);
+        while (pp) {
+          fprintf(of, "  k%s%s = %d\n", ep->enumeration.name, pp->name, pp->value);
+          pp = pp->next;
+        }
+
+        fprintf(of, "\n    uint8_t nparameters() const {return %d;}\n", ep->group.nparameters);
+        fprintf(of, "    std::size_t size() const {return 0;} // TODO implement\n");
+        fprintf(of, "    std::size_t wire_overhead() const {return 0;} // TODO implement\n");
+        fprintf(of, "    bool is_valid() const {return false;} // TODO implement\n");
+
+        fprintf(of, "};\n\n\n");
+        break;
+        }
+        
+    default:
+        break;
+    }
+
+    ep = ep->next;
+  }
 
   hash_table_delete(type_table);
   hash_table_delete(msg_table);

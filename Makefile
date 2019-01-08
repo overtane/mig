@@ -1,5 +1,5 @@
-CFLAGS ?= -O0 -g -Wall
-SFLAGS = -Wno-unused-function -Wno-unneeded-internal-declaration
+CFLAGS ?= -O0 -g -Wall -Wno-unused-function
+SFLAGS = -Wno-unneeded-internal-declaration
 OBJS = mig.o scanner.o parser.o
 SRCS = mig.c scanner.c parser.c
 

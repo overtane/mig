@@ -183,12 +183,15 @@ int
 main (int argc, char const* argv[])
 {
   int i;
+
   /* Enable parse traces on option -p.  */
   for (i = 1; i < argc; ++i)
     if (!strcmp(argv[i], "-p"))
       yydebug = 1;
+
   mig_init();
   yyparse ();
+
   return 0;
 }
 
