@@ -9,51 +9,82 @@
 namespace mig {
 
 extern int par_wire_overhead;
+extern int msg_wire_overhead;
 
 enum ParameterOpt {
   OPTIONAL = true,
   REQUIRED = false
 };
 
-class Message {
-    const uint16_t msg_id;
-
-  public:
-    Message(uint16_t id) : msg_id(id) {}
-    uint16_t id() const { return this->msg_id; }
-    virtual bool is_valid() const = 0;
-    virtual std::size_t size() const = 0;
-    virtual std::size_t wire_overhead() const = 0;
-    std::size_t wire_size() { return this->size() + this->wire_overhead(); }
-    // bool encode(std:ostream& os); // TODO: operator >>
-};
-
-typedef uint8_t enum_t;
-typedef std::vector<uint8_t> blob_t; 
-struct void_t {};
-
 class parameter
 {
     uint16_t par_id;
     bool optional;
-    bool exists;
+    bool value_is_set;
+
 
   public:
-    parameter(int id, bool optional=false) :
+    parameter(int id, bool optional=REQUIRED) :
         par_id(id),
         optional(optional),
-        exists(false) 
+        value_is_set(false) 
     {}
 
-    bool is_set() const { return this->exists; } 
-    void set() { this->exists = true; }
+    virtual ~parameter() {}
+
+    bool is_set() const { return this->value_is_set; } 
+    void set() { this->value_is_set = true; }
     bool is_optional() const { return this->optional; } 
     uint16_t id() { return this->par_id; }
 
     virtual std::size_t size() const = 0;
     virtual std::size_t wire_overhead() const = 0;
     std::size_t wire_size() const { return this->size() + this->wire_overhead(); }
+    bool is_valid() { return this->is_set() || this->is_optional(); }
 };
+
+
+class GroupBase {
+    std::vector<::mig::parameter * const>& allpars;
+
+  public:
+    GroupBase() = delete;
+    GroupBase(std::vector<::mig::parameter * const>& allpars) : allpars(allpars)  {}
+
+    int npars() { return this->allpars.size(); } 
+    std::vector<::mig::parameter * const>& params() { return this->allpars; }
+    virtual bool is_valid() const {
+        for (auto it : this->allpars) if (!it->is_valid()) return false;
+        return true;
+    }
+    std::size_t size() const {
+        std::size_t s = 0;
+        for (auto it : this->allpars) s += it->size();
+        return s;
+    } 
+    virtual std::size_t wire_overhead() const { 
+        std::size_t s = 0;
+        for (auto it : this->allpars) s += it->wire_overhead();
+        return s;
+    } 
+    std::size_t wire_size() const { return this->size() + this->wire_overhead(); }
+};
+
+class Message : public GroupBase {
+    const int msg_id;
+
+  public:
+    Message(uint16_t id, std::vector<::mig::parameter * const>& allpars) : 
+        GroupBase(allpars), msg_id(id)  {}
+
+    uint16_t id() const { return this->msg_id; }
+
+    // bool encode(std:ostream& os); // TODO: operator >>
+};
+
+typedef uint8_t enum_t;
+typedef std::vector<uint8_t> blob_t; 
+struct void_t {};
 
 template <class T>
 class simple_parameter : public parameter
@@ -83,33 +114,34 @@ class simple_parameter <void_t> : public parameter
 
 
 template <class T>
-class complex_parameter : public parameter
+class compound_parameter : public parameter
 {   
-    T data;
+    T* data;
 
   public:
-    complex_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    compound_parameter(int id, bool optional=false) : parameter(id, optional), data(nullptr) {}
+    virtual ~compound_parameter() { if (data) delete data; } 
 
-    // TODO OPT would it be more efficient to use reference here and in member
-    // variable.
-    void set(T data) { this->data = data; this->parameter::set(); }
-    T& get() { return this->data; }
+    void set(T* data) {
+        if (this->data)
+            delete data;
+        this->data = data;
+        this->parameter::set();
+    }
+    T* get() { return this->data; }
 
-
-    std::size_t size() const { return (this->is_set()) ? this->data.size(): 0; }
-
-    // TODO
-    std::size_t wire_overhead() const { return mig::par_wire_overhead; }
+    std::size_t size() const { return (this->is_set()) ? this->data->size(): 0; }
+    std::size_t wire_overhead() const { return mig::par_wire_overhead; } // TODO
 };
 
 
 template <>
-class complex_parameter <std::string>: public parameter
+class compound_parameter <std::string>: public parameter
 {   
     std::string data;
-&
+
   public:
-    complex_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    compound_parameter(int id, bool optional=false) : parameter(id, optional) {}
 
     void set(std::string data) { this->data = data; this->parameter::set(); }
     std::string& get() { return this->data; }
