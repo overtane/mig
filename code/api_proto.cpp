@@ -32,6 +32,7 @@ class TestMessage1002 : public ::mig::Message {
 
   public:
     TestMessage1002() : ::mig::Message(0x1002, allpars) {}
+    virtual ~TestMessage1002() {}
 
     ::mig::simple_parameter<std::int8_t> param1{0, ::mig::OPTIONAL};
     ::mig::simple_parameter<bool> param2{1, ::mig::REQUIRED};  
