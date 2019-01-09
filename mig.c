@@ -487,7 +487,17 @@ mig_creat_parameter(const char *type,
 // - is_valid
 // - wire_overhead
 //
-static void generate_parameters(struct parameter *pp, FILE *of) 
+static void generate_par_refs(FILE *of, struct parameter *pp) 
+{
+  if (pp) {
+    while (pp) {
+      fprintf(of, "      &%s,\n", pp->name);
+      pp = pp->next;
+    }
+  }
+}
+
+static void generate_parameters(FILE *of, struct parameter *pp) 
 {
   if (pp) {
     while (pp) {
@@ -512,7 +522,6 @@ static void generate_parameters(struct parameter *pp, FILE *of)
         (pp->optional)? ", ::mig::OPTIONAL" : "" );
       pp = pp->next;
     }
-    fprintf(of, "\n"); 
   }
 }
 
@@ -532,52 +541,50 @@ void mig_generate_code( struct element *head ) {
     case ET_MESSAGE: {
 
         struct parameter *pp = ep->message.parameters;
-        fprintf(of, "class %s : public ::mig:Message {\n\n  public:\n", ep->message.name);
-        fprintf(of, "    %s() : ::mig:Message(0x%x) {}\n\n", ep->message.name, ep->message.id);
+        fprintf(of, "class %s : public ::mig:Message {\n\n", ep->message.name);
+        fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
+        generate_par_refs(of, pp);
+        fprintf(of, "    };\n\n");
+        fprintf(of, "  public:\n");
+        fprintf(of, "    %s() : ::mig:Message(0x%x, allpars) {}\n",
+          ep->message.name, ep->message.id);
+        fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
 
-        generate_parameters(pp, of);
+        generate_parameters(of, pp);
 
-        fprintf(of, "    uint8_t nparameters() const {return %d;}\n", ep->message.nparameters);
-        if (ep->message.nparameters == 0) {
-          fprintf(of, "    std::size_t size() const {return wire_overhead();}\n");
-          fprintf(of, "    std::size_t wire_overhead() const {return ::mig::msg_wire_overhead;}\n");
-          fprintf(of, "    bool is_valid() const {return true;}\n");
-        } else {
-          fprintf(of, "    std::size_t size() const {return 0;} // TODO implement\n");
-          fprintf(of, "    std::size_t wire_overhead() const {return 0;} // TODO implement\n");
-          fprintf(of, "    bool is_valid() const {return false;} // TODO implement\n");
-        }
         fprintf(of, "};\n\n\n");
         break;
-        }
+    }
         
     case ET_GROUP: {
 
         struct parameter *pp = ep->group.parameters;
-        fprintf(of, "struct %s {\n", ep->group.name);
+        fprintf(of, "struct %s : ::mig::GroupBase {\n\n", ep->group.name);
 
-        generate_parameters(pp, of);
+        generate_parameters(of, pp);
 
+        fprintf(of, "\n    %s() : ::mig::GroupBase {}\n", ep->group.name);
+        fprintf(of, "    virtual ~%s() {}\n", ep->group.name);
+        fprintf(of, "  private:\n");
+        fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
+        generate_par_refs(of, pp);
+        fprintf(of, "    };\n");
         fprintf(of, "};\n\n\n");
         break;
-        }
+    }
         
     case ET_ENUM: {
         struct enumerator *pp = ep->enumeration.enumerators;
         fprintf(of, "enum %s : ::mig::enum_t{\n", ep->enumeration.name);
+
         while (pp) {
-          fprintf(of, "  k%s%s = %d\n", ep->enumeration.name, pp->name, pp->value);
+          fprintf(of, "  k%s%s = %d,\n", ep->enumeration.name, pp->name, pp->value);
           pp = pp->next;
         }
 
-        fprintf(of, "\n    uint8_t nparameters() const {return %d;}\n", ep->group.nparameters);
-        fprintf(of, "    std::size_t size() const {return 0;} // TODO implement\n");
-        fprintf(of, "    std::size_t wire_overhead() const {return 0;} // TODO implement\n");
-        fprintf(of, "    bool is_valid() const {return false;} // TODO implement\n");
-
         fprintf(of, "};\n\n\n");
         break;
-        }
+    }
         
     default:
         break;
