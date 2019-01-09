@@ -31,7 +31,7 @@
   #include <string.h>
   int yylex (void);
   void yyerror (char const *);
-  int optional, repeated;
+  int optional, repeated, compound;
 %}
 
 %union {
@@ -42,15 +42,14 @@
   struct element *element;
 }
 
-%token <string> IDENTIFIER 
+%token <string> IDENTIFIER SCOPED 
 %token <number> INTEGER
 %token <string> KW_MESSAGE KW_GROUP KW_ENUM KW_DATATYPE
-%token <number> KW_OPTIONAL KW_REPEATED KW_VAR
+%token <number> KW_OPTIONAL KW_REPEATED KW_COMPOUND
 
 %type <parameter> parameter parameters
 %type <enumerator> enumerator enumerators
 %type <element> elements datatype message enumeration group
-%type <number> alloc
 %type <string> typename
 
 %start all 
@@ -58,23 +57,23 @@
 %%
 
 datatype
-  : KW_DATATYPE typename '=' alloc ';'
+  : KW_DATATYPE IDENTIFIER '=' typename compound_spec ';'
     {
       if ( mig_find_type($2) )
           yyerror("Duplicate type name");
-      $$ = mig_creat_datatype( $2, $4 );
+      $$ = mig_creat_datatype( $2, $4, compound );
       mig_add_element( $$ );
     }
   ;
 
 typename
-  : KW_ENUM
-  | IDENTIFIER
+  : IDENTIFIER
+  | SCOPED
   ;
 
-alloc
-  : INTEGER { $$ = $1; }
-  | KW_VAR { $$ = -1; }
+compound_spec
+  : /* empty */ { compound = 0; }
+  | '[' KW_COMPOUND ']' { compound = 1; }
   ;
 
 parameters

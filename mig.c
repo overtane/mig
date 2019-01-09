@@ -63,7 +63,7 @@ static void dump_elements( struct element *head );
 static struct hash_table *hash_table_new(hash_func, comp_func);
 static void hash_table_delete(struct hash_table *);
 static struct hash_node *hash_table_search(struct hash_table *, union hash_key *);
-static struct hash_node *hash_table_add(struct hash_table *, union hash_key *);
+static struct hash_node *hash_table_add(struct hash_table *, union hash_key *, void *);
 
 /* symbol tables */ 
 static struct hash_table *type_table;
@@ -198,7 +198,7 @@ struct hash_node *hash_table_search(struct hash_table *ht, union hash_key *key)
 }
 
 /*! */
-struct hash_node *hash_table_add(struct hash_table *ht, union hash_key *key)
+struct hash_node *hash_table_add(struct hash_table *ht, union hash_key *key, void *item)
 {
   struct hash_node *node = NULL;
 
@@ -211,7 +211,7 @@ struct hash_node *hash_table_add(struct hash_table *ht, union hash_key *key)
     if (node) {
       node->next = NULL;
       memcpy((void *)&node->key, (void *)key, sizeof(*key));
-      node->item = NULL; // TODO add item  
+      node->item = item;
       node->next = ht->table[hash];
       ht->table[hash]=node;
       ht->nnodes++;
@@ -350,23 +350,22 @@ int mig_find_type(const char *name)
   key.name = name;
 
   ret = hash_table_search(type_table, &key);
-  //printf("%s(%s)=%p\n",__func__,name,ret);
   return (ret)?1:0;
 }
 
 int mig_add_element(const struct element *ep)
 {
-  const char *type_name;
-  union hash_key typekey;
+  const char *name;
+  union hash_key key;
   
   if (ep) {
-    type_name = strdup(ep->name);
-    typekey.name = type_name;
-    hash_table_add(type_table, &typekey);
+    name = ep->name;
+    key.name = name;
+    hash_table_add(type_table, &key, (void *)ep);
     if (ep->type == ET_MESSAGE) {
       union hash_key msgkey;
       msgkey.id = ep->message.id;
-      hash_table_add(msg_table, &msgkey);
+      hash_table_add(msg_table, &msgkey, (void *)ep);
     }
     return 0;
   }
@@ -374,7 +373,7 @@ int mig_add_element(const struct element *ep)
 }
 
 struct element *
-mig_creat_datatype(const char *name, int size)
+mig_creat_datatype(const char *name, const char *native_name, int is_compound)
 {
   struct element *ep = (struct element *)malloc(sizeof(*ep));
 
@@ -384,9 +383,10 @@ mig_creat_datatype(const char *name, int size)
     ep->name = strdup(name);
 
     ep->datatype.name = ep->name;
-    ep->datatype.size = size;
+    ep->datatype.type = strdup(native_name);
+    ep->datatype.compound = is_compound;
   }
-  
+
   return ep;
 }
 
@@ -482,8 +482,6 @@ mig_creat_parameter(const char *type,
 // 1. SIMPLE AND COMPLEX PARAMETERS
 // - Simple parameters: literal types, enums
 // - Complex parameters: blobs, groups, strings
-// 2. Correct types for C++ source
-// - uint8 -> uint8_t etc
 // 3. Generate functions
 // - size
 // - is_valid
@@ -493,9 +491,25 @@ static void generate_parameters(struct parameter *pp, FILE *of)
 {
   if (pp) {
     while (pp) {
-      fprintf(of, "    ::mig::simple_parameter<%s> %s{%d%s};\n",
-        pp->type, pp->name, pp->id,
-          (pp->optional)? ", ::mig::OPTIONAL" : "" );
+      const char *type = pp->type;
+      union hash_key key;
+      int is_compound = 0;
+
+      key.name = pp->type;
+      struct hash_node *np = hash_table_search(type_table, &key);
+      struct element *ep = (struct element *)np->item;
+
+      if (ep->type == ET_GROUP)
+        is_compound = 0;
+      else if (ep->type == ET_DATATYPE) { 
+        type = ep->datatype.type;
+        is_compound = ep->datatype.compound;
+      }
+
+      fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
+        (is_compound)? "compound" : "scalar",
+        type, pp->name, pp->id,
+        (pp->optional)? ", ::mig::OPTIONAL" : "" );
       pp = pp->next;
     }
     fprintf(of, "\n"); 
@@ -510,6 +524,7 @@ void mig_generate_code( struct element *head ) {
   struct element *ep = flip_elements( head, &n );
   
   //dump_elements(ep);
+  fprintf(of, "#include \"mig_templates.h\"\n\n");
 
   while (ep) {
  

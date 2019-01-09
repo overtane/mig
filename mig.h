@@ -39,7 +39,7 @@ struct parameter {
   struct parameter *next;
   const char *name;
   int id;
-  const char *type;
+  const char *type; /*< native data type */
   int optional;
   int repeated;
 };
@@ -52,7 +52,8 @@ struct enumerator {
 
 struct datatype {
   const char *name;
-  int size;
+  const char *type; /*< native data type */
+  int compound;
 };
 
 struct message {
@@ -88,7 +89,7 @@ struct element {
   };
 };
 
-struct element *mig_creat_datatype(const char *, int);
+struct element *mig_creat_datatype(const char *, const char *, int);
 struct element *mig_creat_message(const char *, int, struct parameter *);
 struct element *mig_creat_enumeration(const char *, struct enumerator *);
 struct element *mig_creat_group(const char *, struct parameter *);

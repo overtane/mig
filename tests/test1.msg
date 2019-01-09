@@ -9,19 +9,18 @@
 
 // elementary data types
 // these can be used as types of parameters
-type int8   = 1;
-type int16  = 2;
-type int32  = 4;
-type int64  = 8;
-type uint8  = 1;
-type uint16 = 2;
-type uint32 = 4;
-type uint64 = 8;
-type bool   = 1;
-type string = var;
-type blob   = var;
-type void   = 0;
-type enum   = 1;
+type int8   = int8_t;
+type int16  = int16_t;
+type int32  = int32_t;
+type int64  = int64_t;
+type uint8  = uint8_t;
+type uint16 = uint16_t;
+type uint32 = uint32_t;
+type uint64 = uint64_t;
+type bool   = bool;
+type string = std::string [compound];
+type blob   = ::mig::blob_t [compound];
+type void   = ::mig::void_t;
 
 // enum with two values
 enum TestEnum1 {

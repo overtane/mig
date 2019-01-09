@@ -36,7 +36,7 @@ digit [0-9]
 hexdigit  [0-9a-fA-F]
 alfanumeric [a-zA-Z0-9_]
 whitespace [ \t\n]
-
+scope :{2}
 
 %%
 
@@ -80,28 +80,31 @@ repeated  {
   return KW_REPEATED;
 }
 
-var  {
-  yylval.number = KW_VAR;
-  return KW_VAR;
+compound  {
+  yylval.number = KW_COMPOUND;
+  return KW_COMPOUND;
 }
 
 -?{digit}+  {
   yylval.number = strtol(yytext, NULL, 10);
-  /* TODO check error */
   return INTEGER;
 }
 
 0[xX]{hexdigit}+  {
   yylval.number = strtol(yytext, NULL, 0);
-  /* TODO check error */
   return INTEGER;
 }
 
 {letter}{alfanumeric}+ {
   yylval.string = strdup(yytext);
-  /* TODO check error */
   return IDENTIFIER;
 }
+
+({scope}?{letter}{alfanumeric}+)+ {
+  yylval.string = strdup(yytext);
+  return SCOPED;
+}
+
 [,={};[\]] {
   return yytext[0];
 }
