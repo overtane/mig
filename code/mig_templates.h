@@ -27,9 +27,7 @@ class parameter
     parameter(int id, bool optional=REQUIRED) :
         par_id(id),
         optional(optional),
-        value_is_set(false) 
-    {}
-
+        value_is_set(false) {} 
     virtual ~parameter() {}
 
     bool is_set() const { return this->value_is_set; } 
@@ -50,6 +48,7 @@ class GroupBase {
   public:
     GroupBase() = delete;
     GroupBase(std::vector<::mig::parameter * const>& allpars) : allpars(allpars)  {}
+    virtual ~GroupBase() {}
 
     int npars() { return this->allpars.size(); } 
     std::vector<::mig::parameter * const>& params() { return this->allpars; }
@@ -76,6 +75,7 @@ class Message : public GroupBase {
   public:
     Message(uint16_t id, std::vector<::mig::parameter * const>& allpars) : 
         GroupBase(allpars), msg_id(id)  {}
+    virtual ~Message() {}
 
     uint16_t id() const { return this->msg_id; }
 

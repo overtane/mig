@@ -482,12 +482,14 @@ mig_creat_parameter(const char *type,
 // - virtual destructors, check 
 // - generation order public, private
 //
-static void generate_par_refs(FILE *of, struct parameter *pp) 
+static void generate_allpars_vector(FILE *of, struct parameter *pp) 
 {
+  fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
   while (pp) {
     fprintf(of, "      &%s,\n", pp->name);
     pp = pp->next;
   }
+  fprintf(of, "    };\n");
 }
 
 static void generate_parameters(FILE *of, struct parameter *pp) 
@@ -530,18 +532,19 @@ void mig_generate_code( struct element *head ) {
  
     switch (ep->type) {
     case ET_MESSAGE: {
-
         struct parameter *pp = ep->message.parameters;
         fprintf(of, "class %s : public ::mig::Message {\n\n", ep->message.name);
-        fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
-        generate_par_refs(of, pp);
-        fprintf(of, "    };\n\n");
+
         fprintf(of, "  public:\n");
         fprintf(of, "    %s() : ::mig::Message(0x%x, allpars) {}\n",
           ep->message.name, ep->message.id);
-        fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
+        //fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
+        if (pp)
+          generate_parameters(of, pp);
+        fprintf(of, "\n");
 
-        generate_parameters(of, pp);
+        fprintf(of, "  private:\n");
+        generate_allpars_vector(of, pp);
 
         fprintf(of, "};\n\n\n");
         break;
@@ -552,14 +555,16 @@ void mig_generate_code( struct element *head ) {
         struct parameter *pp = ep->group.parameters;
         fprintf(of, "struct %s : ::mig::GroupBase {\n\n", ep->group.name);
 
-        generate_parameters(of, pp);
+        fprintf(of, "  public:\n");
+        fprintf(of, "    %s() : ::mig::GroupBase(allpars) {}\n", ep->group.name);
+        //fprintf(of, "    virtual ~%s() {}\n\n", ep->group.name);
+        if (pp)
+          generate_parameters(of, pp);
+        fprintf(of, "\n");
 
-        fprintf(of, "\n    %s() : ::mig::GroupBase(allpars) {}\n", ep->group.name);
-        fprintf(of, "    virtual ~%s() {}\n", ep->group.name);
         fprintf(of, "  private:\n");
-        fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
-        generate_par_refs(of, pp);
-        fprintf(of, "    };\n");
+        generate_allpars_vector(of, pp);
+
         fprintf(of, "};\n\n\n");
         break;
     }
@@ -567,7 +572,7 @@ void mig_generate_code( struct element *head ) {
     case ET_ENUM: {
         int value = 0;
         struct enumerator *pp = ep->enumeration.enumerators;
-        fprintf(of, "enum %s : ::mig::enum_t{\n", ep->enumeration.name);
+        fprintf(of, "enum %s : ::mig::enum_t {\n", ep->enumeration.name);
 
         while (pp) {
           fprintf(of, "  k%s%s = %d,\n", ep->enumeration.name, pp->name, pp->value);
@@ -587,8 +592,6 @@ void mig_generate_code( struct element *head ) {
 
     ep = ep->next;
   }
-
-
 
   hash_table_delete(type_table);
   hash_table_delete(msg_table);
