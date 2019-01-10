@@ -87,12 +87,12 @@ typedef std::vector<uint8_t> blob_t;
 struct void_t {};
 
 template <class T>
-class simple_parameter : public parameter
+class scalar_parameter : public parameter
 {
     T value = T(0);
 
   public:
-    simple_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
 
     void set(T value) { this->value = value; this->parameter::set(); }
     T get() const { return this->value; }
@@ -101,11 +101,11 @@ class simple_parameter : public parameter
 };
 
 template <>
-class simple_parameter <void_t> : public parameter
+class scalar_parameter <void_t> : public parameter
 {
 
   public:
-    simple_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
 
     bool get() const { return this->is_set(); }
     std::size_t size() const { return 0; }

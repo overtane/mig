@@ -479,49 +479,40 @@ mig_creat_parameter(const char *type,
 }
 
 // TODO 
-// 1. SIMPLE AND COMPLEX PARAMETERS
-// - Simple parameters: literal types, enums
-// - Complex parameters: blobs, groups, strings
-// 3. Generate functions
-// - size
-// - is_valid
-// - wire_overhead
+// - virtual destructors, check 
+// - generation order public, private
 //
 static void generate_par_refs(FILE *of, struct parameter *pp) 
 {
-  if (pp) {
-    while (pp) {
-      fprintf(of, "      &%s,\n", pp->name);
-      pp = pp->next;
-    }
+  while (pp) {
+    fprintf(of, "      &%s,\n", pp->name);
+    pp = pp->next;
   }
 }
 
 static void generate_parameters(FILE *of, struct parameter *pp) 
 {
-  if (pp) {
-    while (pp) {
-      const char *type = pp->type;
-      union hash_key key;
-      int is_compound = 0;
+  while (pp) {
+    const char *type = pp->type;
+    union hash_key key;
+    int is_compound = 0;
 
-      key.name = pp->type;
-      struct hash_node *np = hash_table_search(type_table, &key);
-      struct element *ep = (struct element *)np->item;
+    key.name = pp->type;
+    struct hash_node *np = hash_table_search(type_table, &key);
+    struct element *ep = (struct element *)np->item;
 
-      if (ep->type == ET_GROUP)
-        is_compound = 0;
-      else if (ep->type == ET_DATATYPE) { 
-        type = ep->datatype.type;
-        is_compound = ep->datatype.compound;
-      }
-
-      fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
-        (is_compound)? "compound" : "scalar",
-        type, pp->name, pp->id,
-        (pp->optional)? ", ::mig::OPTIONAL" : "" );
-      pp = pp->next;
+    if (ep->type == ET_GROUP)
+      is_compound = 1;
+    else if (ep->type == ET_DATATYPE) { 
+      type = ep->datatype.type;
+      is_compound = ep->datatype.compound;
     }
+
+    fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
+      (is_compound)? "compound" : "scalar",
+      type, pp->name, pp->id,
+      (pp->optional)? ", ::mig::OPTIONAL" : "" );
+    pp = pp->next;
   }
 }
 
@@ -541,12 +532,12 @@ void mig_generate_code( struct element *head ) {
     case ET_MESSAGE: {
 
         struct parameter *pp = ep->message.parameters;
-        fprintf(of, "class %s : public ::mig:Message {\n\n", ep->message.name);
+        fprintf(of, "class %s : public ::mig::Message {\n\n", ep->message.name);
         fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
         generate_par_refs(of, pp);
         fprintf(of, "    };\n\n");
         fprintf(of, "  public:\n");
-        fprintf(of, "    %s() : ::mig:Message(0x%x, allpars) {}\n",
+        fprintf(of, "    %s() : ::mig::Message(0x%x, allpars) {}\n",
           ep->message.name, ep->message.id);
         fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
 
@@ -563,7 +554,7 @@ void mig_generate_code( struct element *head ) {
 
         generate_parameters(of, pp);
 
-        fprintf(of, "\n    %s() : ::mig::GroupBase {}\n", ep->group.name);
+        fprintf(of, "\n    %s() : ::mig::GroupBase(allpars) {}\n", ep->group.name);
         fprintf(of, "    virtual ~%s() {}\n", ep->group.name);
         fprintf(of, "  private:\n");
         fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
@@ -574,13 +565,17 @@ void mig_generate_code( struct element *head ) {
     }
         
     case ET_ENUM: {
+        int value = 0;
         struct enumerator *pp = ep->enumeration.enumerators;
         fprintf(of, "enum %s : ::mig::enum_t{\n", ep->enumeration.name);
 
         while (pp) {
           fprintf(of, "  k%s%s = %d,\n", ep->enumeration.name, pp->name, pp->value);
+          if (pp->value > value)
+            value = pp->value;
           pp = pp->next;
         }
+        fprintf(of, "  k%sCount = %d\n", ep->enumeration.name, ++value);
 
         fprintf(of, "};\n\n\n");
         break;
@@ -593,7 +588,8 @@ void mig_generate_code( struct element *head ) {
     ep = ep->next;
   }
 
+
+
   hash_table_delete(type_table);
   hash_table_delete(msg_table);
-
 }
