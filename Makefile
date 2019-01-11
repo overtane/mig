@@ -1,5 +1,5 @@
 CFLAGS ?= -O0 -g -Wall -Wno-unused-function
-SFLAGS = -Wno-unneeded-internal-declaration
+scanner.o: CFLAGS += -Wno-unneeded-internal-declaration
 OBJS = mig.o scanner.o parser.o
 SRCS = mig.c scanner.c parser.c
 
@@ -11,7 +11,6 @@ mig: $(OBJS)
 mig.o: mig.c mig.h
 
 scanner.o: scanner.c
-	$(CC) $(CFLAGS) $(SFLAGS) -c -o $@ $<
 
 scanner.c: scanner.l parser.c
 	flex -o scanner.c scanner.l
@@ -23,7 +22,7 @@ parser.c: parser.y mig.h
 
 all: mig tests
 
-tests:
+tests: mig
 	$(MAKE) -C $@
 
 clean:

@@ -153,4 +153,7 @@ class compound_parameter <std::string>: public parameter
 
 } // end namespace mig
 
+
+// TODO repeated parameters
+
 #endif

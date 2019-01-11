@@ -29,8 +29,11 @@
   #include "mig.h"
   #include <stdio.h>
   #include <string.h>
+  #include <ctype.h>
+  #include <unistd.h>
   int yylex (void);
   void yyerror (char const *);
+  extern FILE * yyin;
   int optional, repeated, compound;
 %}
 
@@ -179,18 +182,61 @@ void yyerror (char const *msg)
 }
 
 int
-main (int argc, char const* argv[])
+main (int argc, char *argv[])
 {
-  int i;
+  int c;
+  int dump = 0;
+  char *outname = NULL;
+  FILE *inf;
 
-  /* Enable parse traces on option -p.  */
-  for (i = 1; i < argc; ++i)
-    if (!strcmp(argv[i], "-p"))
-      yydebug = 1;
+  while ((c = getopt (argc, argv, "dho:p")) != -1)
+    switch (c) {
+      case 'd':
+        dump = 1;
+        break;
+      case 'p':
+        yydebug = 1;
+        break;
+      case 'o':
+        outname = optarg;
+        break;
+      case '?':
+        if (optopt == 'o')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        return 1;
+      case 'h':
+          fprintf (stdout, "%s [-dp] [-o outfile] infile\n", argv[0]);
+          fprintf (stdout, "  -d dump parsed elements and exit\n");
+          fprintf (stdout, "  -p lexical scanner debug output\n");
+      default:
+        goto error;
+    }
 
-  mig_init();
+  if (optind >= argc) {
+    fprintf (stderr, "Missing input filename\n");
+    goto error;
+  }
+
+  inf = fopen(argv[optind], "r");
+  if (!inf) {
+    fprintf (stderr, "Cannot open file %s for input\n", argv[optind]);
+    goto error;
+  }
+
+  mig_init(argv[optind], outname, dump);
+
+  yyin = inf;
   yyparse ();
 
   return 0;
+
+error:
+  return -1;
 }
 

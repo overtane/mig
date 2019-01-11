@@ -23,9 +23,11 @@
  
 */
 #include "mig.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #ifdef DEBUG
 #include <assert.h>
 #else
@@ -64,6 +66,9 @@ static struct hash_table *hash_table_new(hash_func, comp_func);
 static void hash_table_delete(struct hash_table *);
 static struct hash_node *hash_table_search(struct hash_table *, union hash_key *);
 static struct hash_node *hash_table_add(struct hash_table *, union hash_key *, void *);
+
+static void generate_cpp(struct element *head, FILE *of);
+
 
 /* symbol tables */ 
 static struct hash_table *type_table;
@@ -325,9 +330,19 @@ flip_enumerators(struct enumerator *head, int *nenumerators)
   return prev;
 }
 
-void mig_init(void) {
+struct {
+  const char *out;
+  const char *in;
+  int dump;
+} migpars;
+
+void mig_init(const char *in, const char *out, int dump) {
   type_table = hash_table_new(name2hash, namecmp);
   msg_table = hash_table_new(id2hash, idcmp);
+
+  migpars.out = out;
+  migpars.in = in;
+  migpars.dump = dump;
 }
 
 int mig_find_msg(int id)
@@ -478,10 +493,6 @@ mig_creat_parameter(const char *type,
   return ep;
 }
 
-// TODO 
-// - virtual destructors, check 
-// - generation order public, private
-//
 static void generate_allpars_vector(FILE *of, struct parameter *pp) 
 {
   fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
@@ -524,9 +535,45 @@ void mig_generate_code( struct element *head ) {
   FILE *of = stdout;
   int n = 0;
   struct element *ep = flip_elements( head, &n );
-  
-  //dump_elements(ep);
-  fprintf(of, "#include \"mig_templates.h\"\n\n");
+ 
+  if (migpars.dump)
+    dump_elements(ep);
+  else if (migpars.out)
+    of = fopen(migpars.out, "w");
+   
+  if (of)
+    generate_cpp(ep, of);
+  else
+    fprintf(stderr, "Could not open output file (%s)\n", migpars.out);
+
+  hash_table_delete(type_table);
+  hash_table_delete(msg_table);
+}
+
+void generate_cpp( struct element *ep, FILE *of)
+{
+  time_t t = time(NULL);
+  struct tm *tm = localtime(&t);
+
+  char *upper = strdup(migpars.in);
+  char *c = upper;
+
+  while (*c != '\0') {
+    if (isalpha(*c))
+      *c = toupper(*c);
+    else
+      *c = '_';
+    c++;
+  }
+
+  fprintf(of, "//  %s\n", migpars.out);
+  fprintf(of, "//  This is an automatically generated file\n");
+  fprintf(of, "//  Please do not edit\n");
+  fprintf(of, "//  Source:  %s\n", migpars.in);
+  fprintf(of, "//  %s\n", asctime(tm));
+  fprintf(of, "#ifndef _%s_H_\n", upper);
+  fprintf(of, "#define _%s_H_\n\n", upper);
+  fprintf(of, "#include \"migmsg.h\"\n\n");
 
   while (ep) {
  
@@ -592,7 +639,7 @@ void mig_generate_code( struct element *head ) {
 
     ep = ep->next;
   }
+ 
+  fprintf(of, "#endif // ifndef _%s_H_\n", upper);
 
-  hash_table_delete(type_table);
-  hash_table_delete(msg_table);
 }

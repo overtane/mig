@@ -96,7 +96,7 @@ struct element *mig_creat_group(const char *, struct parameter *);
 struct enumerator *mig_creat_enumerator(const char *, int);
 struct parameter *mig_creat_parameter(const char*, const char *, int, int, int);
 
-void mig_init(void);
+void mig_init(const char *, const char *, int);
 int mig_find_type(const char *);
 int mig_find_msg(int);
 int mig_add_element(const struct element *);
