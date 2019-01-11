@@ -122,7 +122,7 @@ TEST_F(HashTableTest, IdTableTest)
   // add sequential keys and check result
   for (int i=0; i<3560; i++) {
     hk2.id = i;
-    hash_table_add(ht2, &hk2);
+    hash_table_add(ht2, &hk2, NULL);
     EXPECT_EQ(hash_table_size(ht2), i+1);
     EXPECT_EQ(ht2->nnodes, i+1);
     EXPECT_NE(ht2->table[i%HASH_TABLE_SIZE], nullptr);
@@ -142,7 +142,7 @@ TEST_F(HashTableTest, IdTableTest)
   for (int i=0; i<256; i++) {
     int r = std::rand() % 24378;
     hk[i].id = r;
-    hash_table_add(ht2, &hk[i]);
+    hash_table_add(ht2, &hk[i], NULL);
   }
   for (int i=0; i<256; i++) {
     struct hash_node *node = hash_table_search(ht2, &hk[i]);

@@ -1,25 +1,30 @@
-CPP=g++
-CPPFLAGS ?= -DDEBUG -std=c++11 -isystem ${GTEST_DIR}/include -I..
-SFLAGS = -Wno-unused-function -Wno-unneeded-internal-declaration
-OBJS = mig_test.o
-SRCS = mig_test.cpp
+SRCS = mig_tests.cpp msg_tests.cpp
+OBJS = $(SRCS:.cpp=.o)
 GTEST_DIR?=../../googletest/googletest
 GTEST_SRC= ${GTEST_DIR}/src/gtest-all.cc
 GTEST_OBJ=gtest-all.o
+
+CPP=g++
+CPPFLAGS ?= -DDEBUG -std=c++11 -isystem ${GTEST_DIR}/include -I..
 
 all: libgtest.a testrunner
 
 libgtest.a: ${GTEST_OBJ}
 	ar -rv $@ ${GTEST_OBJ} 
 
-${GTEST_OBJ}: ${GTEST_SRC}
-	$(CPP) $(CPPFLAGS) -I${GTEST_DIR} -pthread -c ${GTEST_SRC}
+msg_tests.msg.h: msg_tests.msg ../mig
+	../mig -o $@ $< 
 
-$(OBJS): $(SRCS)
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+${GTEST_OBJ}: ${GTEST_SRC}
+	$(CPP) $(CPPFLAGS) -I${GTEST_DIR} -pthread -c $<
+
+mig_tests.o: mig_tests.cpp ../mig
+
+msg_tests.o: msg_tests.cpp msg_tests.msg.h
 
 testrunner: libgtest.a $(OBJS)
 	$(CPP) $(CPPFLAGS) -o $@ libgtest.a $(OBJS)
+	./testrunner
 
 clean:
 	rm libgtest.a ${GTEST_OBJ}
