@@ -28,17 +28,20 @@ enum TestEnum1 {
   VALUE2 = 1;
 }
 
+// message without parameters
+message TestMessage1001 = 4097 { }
+
 // group with one parameter
 group TestGroup1 {
   void Param1 = 0;
 }
 
-// message without parameters
-message TestMessage1001 = 4097 { }
-
-// message with one mandatory parameter
+// message with scalar parameters
 message TestMessage1002 = 4098 {
-  void Param1 = 0; 
+  void param1 = 0;
+  uint8 param2 = 1;
+  int16 param3 = 2;
+  uint32 param4 = 3 [optional];
 }
 
 // message with several mandatory parameters

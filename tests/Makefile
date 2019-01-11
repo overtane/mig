@@ -20,7 +20,7 @@ ${GTEST_OBJ}: ${GTEST_SRC}
 
 mig_tests.o: mig_tests.cpp ../mig
 
-msg_tests.o: msg_tests.cpp msg_tests.msg.h
+msg_tests.o: msg_tests.cpp msg_tests.msg.h ../migmsg.h
 
 testrunner: libgtest.a $(OBJS)
 	$(CPP) $(CPPFLAGS) -o $@ libgtest.a $(OBJS)

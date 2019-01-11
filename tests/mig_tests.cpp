@@ -34,7 +34,7 @@ extern "C" {
 // HASH TABLE TESTS
 //
 
-class HashTableTest : public ::testing::Test
+class HashTableTests : public ::testing::Test
 {
   protected:
     void SetUp() override {
@@ -56,7 +56,7 @@ class HashTableTest : public ::testing::Test
 };
 
 
-TEST_F(HashTableTest, IsEmptyAndInitialized) {
+TEST_F(HashTableTests, IsEmptyAndInitialized) {
   EXPECT_EQ(hash_table_size(ht1), 0);
   EXPECT_EQ(hash_table_size(ht2), 0);
 
@@ -81,7 +81,7 @@ TEST_F(HashTableTest, IsEmptyAndInitialized) {
 }
 
 
-TEST_F(HashTableTest, HashFromIdTest) {
+TEST_F(HashTableTests, HashFromIdTest) {
   hk1.id = 0;
   EXPECT_EQ(id2hash(&hk1), 0);
   hk1.id = 5;
@@ -96,7 +96,7 @@ TEST_F(HashTableTest, HashFromIdTest) {
   EXPECT_EQ(id2hash(&hk1), 5);
 }
 
-TEST_F(HashTableTest, HashFromNameTest) {
+TEST_F(HashTableTests, HashFromNameTest) {
   hk2.name = "";
   EXPECT_EQ(name2hash(&hk2), 0);
   hk2.name = "A";
@@ -105,7 +105,7 @@ TEST_F(HashTableTest, HashFromNameTest) {
   EXPECT_EQ(name2hash(&hk2), ('A'+'B')%HASH_TABLE_SIZE);
 }
 
-TEST_F(HashTableTest, IdCmpTest) {
+TEST_F(HashTableTests, IdCmpTest) {
   hk1.id = 3;
   hk2.id = 3;
   EXPECT_EQ(idcmp(&hk1,&hk2), 0);
@@ -117,7 +117,7 @@ TEST_F(HashTableTest, IdCmpTest) {
   EXPECT_GT(idcmp(&hk1,&hk2), 0);
 }
 
-TEST_F(HashTableTest, IdTableTest)
+TEST_F(HashTableTests, IdTableTest)
 {
   // add sequential keys and check result
   for (int i=0; i<3560; i++) {
