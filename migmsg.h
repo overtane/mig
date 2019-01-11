@@ -52,7 +52,7 @@ class GroupBase {
 
     int npars() { return this->allpars.size(); } 
     std::vector<::mig::parameter * const>& params() { return this->allpars; }
-    virtual bool is_valid() const {
+    bool is_valid() const {
         for (auto it : this->allpars) if (!it->is_valid()) return false;
         return true;
     }
@@ -66,6 +66,7 @@ class GroupBase {
         for (auto it : this->allpars) s += it->wire_overhead();
         return s;
     } 
+    bool is_set() const { return this->is_valid(); } // group is set if it is valid
     std::size_t wire_size() const { return this->size() + this->wire_overhead(); }
 };
 
@@ -112,19 +113,38 @@ class scalar_parameter <void_t> : public parameter
     std::size_t wire_overhead() const { return mig::par_wire_overhead; }
 };
 
-
 template <class T>
-class compound_parameter : public parameter
+class group_parameter : public parameter
 {   
-    T* data;
 
   public:
-    compound_parameter(int id, bool optional=false) : parameter(id, optional), data(nullptr) {}
-    virtual ~compound_parameter() { if (data) delete data; } 
+    T group;
+
+    group_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    virtual ~group_parameter() {} 
+
+    // set(T group) this could be copy operation 
+    T& get() { return this->group; }
+
+    std::size_t is_valid() const { return (this->group.is_valid() || this->is_optional); }
+    std::size_t is_set() const { return (this->group.is_set()); }
+    std::size_t size() const { return this->group.size(); }
+    std::size_t wire_overhead() const { return mig::par_wire_overhead; } // TODO
+};
+
+
+
+template <class T>
+class composite_parameter : public parameter
+{   
+    T* data = nullptr;
+
+  public:
+    composite_parameter(int id, bool optional=false) : parameter(id, optional)  {}
+    virtual ~composite_parameter() { if (data) delete data; } 
 
     void set(T* data) {
-        if (this->data)
-            delete data;
+        if (this->data) delete data;
         this->data = data;
         this->parameter::set();
     }
@@ -134,14 +154,14 @@ class compound_parameter : public parameter
     std::size_t wire_overhead() const { return mig::par_wire_overhead; } // TODO
 };
 
-
 template <>
-class compound_parameter <std::string>: public parameter
+class composite_parameter <std::string>: public parameter
 {   
     std::string data;
 
   public:
-    compound_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    composite_parameter(int id, bool optional=false) : parameter(id, optional) {}
+    virtual ~composite_parameter() { } 
 
     void set(std::string data) { this->data = data; this->parameter::set(); }
     std::string& get() { return this->data; }

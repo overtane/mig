@@ -388,7 +388,7 @@ int mig_add_element(const struct element *ep)
 }
 
 struct element *
-mig_creat_datatype(const char *name, const char *native_name, int is_compound)
+mig_creat_datatype(const char *name, const char *native_name, int is_composite)
 {
   struct element *ep = (struct element *)malloc(sizeof(*ep));
 
@@ -399,7 +399,7 @@ mig_creat_datatype(const char *name, const char *native_name, int is_compound)
 
     ep->datatype.name = ep->name;
     ep->datatype.type = strdup(native_name);
-    ep->datatype.compound = is_compound;
+    ep->datatype.composite = is_composite;
   }
 
   return ep;
@@ -506,29 +506,29 @@ static void generate_allpars_vector(FILE *of, struct parameter *pp)
 static void generate_parameters(FILE *of, struct parameter *pp) 
 {
   while (pp) {
-    const char *type = pp->type;
-    union hash_key key;
-    int is_compound = 0;
-
-    key.name = pp->type;
+    union hash_key key = { .name = pp->type };
     struct hash_node *np = hash_table_search(type_table, &key);
     struct element *ep = (struct element *)np->item;
 
-    if (ep->type == ET_GROUP)
-      is_compound = 1;
-    else if (ep->type == ET_DATATYPE) { 
-      type = ep->datatype.type;
-      is_compound = ep->datatype.compound;
-    }
+    const char *partype = NULL;
+    const char *datatype = pp->type;
+    const char *optional = (pp->optional)? ", ::mig::OPTIONAL" : "";
 
-    fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
-      (is_compound)? "compound" : "scalar",
-      type, pp->name, pp->id,
-      (pp->optional)? ", ::mig::OPTIONAL" : "" );
+    if (ep->type == ET_GROUP)
+      partype = "group";
+    else if (ep->type == ET_DATATYPE) {
+      datatype = ep->datatype.type; 
+      partype = (ep->datatype.composite)? "composite" : "scalar";
+    } else if (ep->type == ET_ENUM) 
+      partype = "scalar";
+
+    if (partype)
+      fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
+        partype, datatype, pp->name, pp->id, optional);
+
     pp = pp->next;
   }
 }
-
 
 void mig_generate_code( struct element *head ) {
 
@@ -598,7 +598,6 @@ void generate_cpp( struct element *ep, FILE *of)
     }
         
     case ET_GROUP: {
-
         struct parameter *pp = ep->group.parameters;
         fprintf(of, "struct %s : ::mig::GroupBase {\n\n", ep->group.name);
 

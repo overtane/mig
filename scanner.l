@@ -80,9 +80,9 @@ repeated  {
   return KW_REPEATED;
 }
 
-compound  {
-  yylval.number = KW_COMPOUND;
-  return KW_COMPOUND;
+composite  {
+  yylval.number = KW_COMPOSITE;
+  return KW_COMPOSITE;
 }
 
 -?{digit}+  {

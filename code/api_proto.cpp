@@ -1,5 +1,5 @@
 
-#include "mig_templates.h"
+#include "../migmsg.h"
 #include <iostream>
 
 // Prototyping API
@@ -15,8 +15,8 @@ enum TestEnum1 : ::mig::enum_t {
 };
 
 struct TestGroup1 : ::mig::GroupBase {
-    ::mig::simple_parameter<std::int16_t> param1{0, ::mig::OPTIONAL};
-    ::mig::simple_parameter<std::int32_t> param2{1, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<std::int16_t> param1{0, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<std::int32_t> param2{1, ::mig::OPTIONAL};
 
     TestGroup1() : ::mig::GroupBase(allpars) {}
     virtual ~TestGroup1() {}
@@ -34,15 +34,15 @@ class TestMessage1002 : public ::mig::Message {
     TestMessage1002() : ::mig::Message(0x1002, allpars) {}
     virtual ~TestMessage1002() {}
 
-    ::mig::simple_parameter<std::int8_t> param1{0, ::mig::OPTIONAL};
-    ::mig::simple_parameter<bool> param2{1, ::mig::REQUIRED};  
-    ::mig::simple_parameter<std::uint32_t> param3{2, ::mig::OPTIONAL};  
-    ::mig::simple_parameter<mig::void_t> param4{3};  
-    ::mig::simple_parameter<TestEnum1> param5{4};  
+    ::mig::scalar_parameter<std::int8_t> param1{0, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
+    ::mig::scalar_parameter<std::uint32_t> param3{2, ::mig::OPTIONAL};  
+    ::mig::scalar_parameter<mig::void_t> param4{3};  
+    ::mig::scalar_parameter<TestEnum1> param5{4};  
 
-    ::mig::compound_parameter<TestGroup1> param6{5};
-    ::mig::compound_parameter<std::string> param7{6};
-    ::mig::compound_parameter<mig::blob_t> param8{7};
+    ::mig::group_parameter<TestGroup1> param6{5};
+    ::mig::composite_parameter<std::string> param7{6};
+    ::mig::composite_parameter<mig::blob_t> param8{7};
 };
 
 // --
@@ -60,9 +60,8 @@ int main() {
   m2.param5.set(VALUE2);
   //std::cout << m2.param7.size() << '\n';
 
-  TestGroup1 *g1 = new TestGroup1();  // 
-  g1->param1.set(5);
-  m2.param6.set(g1);
+  m2.param6.group.param1.set(2);
+  m2.param6.group.param2.set(1234567890);
 
   std::string str("Hello World");
 
@@ -125,7 +124,7 @@ int main() {
   std::cout << "Param6 id "
             << m2.param6.id()
             << ", value "
-            << " reference " // get returns reference. What if not defined?
+            << " group" // get returns reference. What if not defined?
             << ", defined " << m2.param6.is_set()
             << ", optional " << m2.param6.is_optional()
             << ", size " << m2.param6.size()
@@ -143,7 +142,7 @@ int main() {
   std::cout << "Param8 id "
             << m2.param8.id()
             << ", value "
-            << " reference " // get returns reference. What if not defined?
+            << " reference" // get returns reference. What if not defined?
             << ", defined " << m2.param8.is_set()
             << ", optional " << m2.param8.is_optional()
             << ", size " << m2.param8.size()

@@ -2,7 +2,7 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Fri Jan 11 00:09:08 2019
+//  Fri Jan 11 11:09:37 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -60,7 +60,7 @@ class TestMessage1003 : public ::mig::Message {
     ::mig::scalar_parameter<::mig::void_t> Param1{0};
     ::mig::scalar_parameter<bool> Param2{1};
     ::mig::scalar_parameter<uint8_t> Param3{2};
-    ::mig::compound_parameter<::mig::blob_t> Param4{3};
+    ::mig::composite_parameter<::mig::blob_t> Param4{3};
 
   private:
     std::vector<::mig::parameter * const> allpars = {
@@ -79,7 +79,7 @@ class TestMessage1004 : public ::mig::Message {
     ::mig::scalar_parameter<::mig::void_t> Param1{0, ::mig::OPTIONAL};
     ::mig::scalar_parameter<bool> Param2{1, ::mig::OPTIONAL};
     ::mig::scalar_parameter<uint8_t> Param3{2, ::mig::OPTIONAL};
-    ::mig::compound_parameter<::mig::blob_t> Param4{3};
+    ::mig::composite_parameter<::mig::blob_t> Param4{3};
 
   private:
     std::vector<::mig::parameter * const> allpars = {
@@ -96,7 +96,7 @@ class TestMessage1005 : public ::mig::Message {
   public:
     TestMessage1005() : ::mig::Message(0x1389, allpars) {}
     ::mig::scalar_parameter<TestEnum1> Param1{92};
-    ::mig::compound_parameter<TestGroup1> Param2{12, ::mig::OPTIONAL};
+    ::mig::group_parameter<TestGroup1> Param2{12, ::mig::OPTIONAL};
 
   private:
     std::vector<::mig::parameter * const> allpars = {

@@ -34,7 +34,7 @@
   int yylex (void);
   void yyerror (char const *);
   extern FILE * yyin;
-  int optional, repeated, compound;
+  int optional, repeated, composite;
 %}
 
 %union {
@@ -48,7 +48,7 @@
 %token <string> IDENTIFIER SCOPED 
 %token <number> INTEGER
 %token <string> KW_MESSAGE KW_GROUP KW_ENUM KW_DATATYPE
-%token <number> KW_OPTIONAL KW_REPEATED KW_COMPOUND
+%token <number> KW_OPTIONAL KW_REPEATED KW_COMPOSITE
 
 %type <parameter> parameter parameters
 %type <enumerator> enumerator enumerators
@@ -60,11 +60,11 @@
 %%
 
 datatype
-  : KW_DATATYPE IDENTIFIER '=' typename compound_spec ';'
+  : KW_DATATYPE IDENTIFIER '=' typename composite_spec ';'
     {
       if ( mig_find_type($2) )
           yyerror("Duplicate type name");
-      $$ = mig_creat_datatype( $2, $4, compound );
+      $$ = mig_creat_datatype( $2, $4, composite );
       mig_add_element( $$ );
     }
   ;
@@ -74,9 +74,9 @@ typename
   | SCOPED
   ;
 
-compound_spec
-  : /* empty */ { compound = 0; }
-  | '[' KW_COMPOUND ']' { compound = 1; }
+composite_spec
+  : /* empty */ { composite = 0; }
+  | '[' KW_COMPOSITE ']' { composite = 1; }
   ;
 
 parameters
