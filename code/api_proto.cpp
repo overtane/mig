@@ -65,8 +65,8 @@ int main() {
   m2.param5.set(VALUE2);
   //std::cout << m2.param7.size() << '\n';
 
-  m2.param6.group.param1.set(2);
-  m2.param6.group.param2.set(1234567890);
+  m2.param6.m_group.param1.set(2);
+  m2.param6.m_group.param2.set(1234567890);
 
   std::string str("Hello World");
 

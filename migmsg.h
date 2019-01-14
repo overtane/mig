@@ -161,24 +161,24 @@ class Message : public GroupBase {
 
   public:
     Message(int id, std::vector<::mig::parameter * const>& m_params) : 
-        GroupBase(m_params), msg_id(id) {}
-    ~Message() {if (w) delete w; }
+        GroupBase(m_params), m_id(id) {}
+    ~Message() {if (m_wired) delete m_wired; }
 
-    int id() const { return this->msg_id; }
+    int id() const { return this->m_id; }
 
     const Wired *to_wire() {
-      if (w)
-        delete w;
-      w = Wired::make_wired(*this);
-      return w;
+      if (m_wired)
+        delete m_wired;
+      m_wired = Wired::make_wired(*this);
+      return m_wired;
     }
-    Wired* get_wired() { return w; }
+    Wired* get_wired() { return m_wired; }
  
     const Message& me = *this;
 
   private:
-    const int msg_id;
-    Wired *w = nullptr;
+    const int m_id;
+    Wired *m_wired = nullptr;
 };
 
 typedef uint8_t enum_t;
@@ -192,14 +192,14 @@ class scalar_parameter : public parameter {
     scalar_parameter(int id, bool optional=false) : parameter(id, optional, false) {}
     scalar_parameter& operator=(T value) { this->set(value); return *this; } 
 
-    void set(T value) { this->value = value; this->parameter::set(); }
-    T get() const { return this->value; }
+    void set(T value) { this->m_data = value; this->parameter::set(); }
+    T get() const { return this->m_data; }
 
     std::size_t size() const override { return (this->is_set()) ? sizeof(T): 0; }
-    void to_wire(Wired& w) const override { w.to_wire(value); }
+    void to_wire(Wired& w) const override { w.to_wire(m_data); }
 
   private:
-    T value = T(0);
+    T m_data = T(0);
 };
 
 template <>
@@ -211,26 +211,26 @@ class scalar_parameter <void_t> : public parameter {
     bool get() const { return this->is_set(); }
 
     std::size_t size() const override { return 0; }
-    void to_wire(Wired& w) const override { } // parameter has no value
+    void to_wire(Wired& w) const override { (void)w; } // parameter has no value
 };
 
 template <class T>
 class group_parameter : public parameter {   
 
   public:
-    T group;
+    T m_group;
 
     group_parameter(int id, bool optional=false) : parameter(id, optional, true) {}
     virtual ~group_parameter() {} 
 
-    // set(T group) this could be copy operation 
-    T& get() { return this->group; }
+    // set(T group) // TODO this could be copy operation 
+    T& get() { return this->m_group; }
 
-    bool is_set() const override { return this->group.is_set(); }
-    std::size_t size() const override { return this->group.size(); }
-    bool is_valid() const override { return (this->group.is_valid() || this->is_optional()); }
-    void to_wire(Wired& w) const override { w.to_wire(dynamic_cast<const GroupBase&>(group)); }
-    size_t wire_size(Wired& w) const override { return this->group.wire_size(w); }
+    bool is_set() const override { return this->m_group.is_set(); }
+    std::size_t size() const override { return this->m_group.size(); }
+    bool is_valid() const override { return (this->m_group.is_valid() || this->is_optional()); }
+    void to_wire(Wired& w) const override { w.to_wire(dynamic_cast<const GroupBase&>(m_group)); }
+    size_t wire_size(Wired& w) const override { return this->m_group.wire_size(w); }
 };
 
 template <class T>
@@ -238,20 +238,20 @@ class composite_parameter : public parameter {
 
   public:
     composite_parameter(int id, bool optional=false) : parameter(id, optional, false) {}
-    virtual ~composite_parameter() { if (data) delete data; } 
+    virtual ~composite_parameter() { if (m_data) delete m_data; } 
 
     void set(T* data) {
-        if (this->data) delete data;
-        this->data = data;
+        if (this->m_data) delete m_data;
+        this->m_data = data;
         this->parameter::set();
     }
-    T* get() { return this->data; }
+    T* get() { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? this->data->size(): 0; }
-    void to_wire(Wired& w) const override { w.to_wire((const unsigned char *)data, this->size()); }
+    std::size_t size() const override { return (this->is_set()) ? this->m_data->size(): 0; }
+    void to_wire(Wired& w) const override { w.to_wire((const unsigned char *)m_data, this->size()); }
 
   private:
-    T* data = nullptr;
+    T* m_data = nullptr;
 
 };
 
@@ -263,14 +263,14 @@ class composite_parameter <std::string>: public parameter
     composite_parameter(int id, bool optional=false) : parameter(id, optional, false) {}
     virtual ~composite_parameter() {} 
 
-    void set(std::string data) { this->data = data; this->parameter::set(); }
-    std::string& get() { return this->data; }
+    void set(std::string data) { this->m_data = data; this->parameter::set(); }
+    std::string& get() { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? this->data.size()+1: 0; }
-    void to_wire(Wired& w) const override { w.to_wire(data.c_str(), this->size()); }
+    std::size_t size() const override { return (this->is_set()) ? this->m_data.size()+1: 0; }
+    void to_wire(Wired& w) const override { w.to_wire(m_data.c_str(), this->size()); }
 
   private:
-    std::string data;
+    std::string m_data;
 };
 
 } // end namespace mig
