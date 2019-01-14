@@ -493,9 +493,9 @@ mig_creat_parameter(const char *type,
   return ep;
 }
 
-static void generate_allpars_vector(FILE *of, struct parameter *pp) 
+static void generate_m_params_vector(FILE *of, struct parameter *pp) 
 {
-  fprintf(of, "    std::vector<::mig::parameter * const> allpars = {\n");
+  fprintf(of, "    std::vector<::mig::parameter * const> m_params = {\n");
   while (pp) {
     fprintf(of, "      &%s,\n", pp->name);
     pp = pp->next;
@@ -583,7 +583,7 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "class %s : public ::mig::Message {\n\n", ep->message.name);
 
         fprintf(of, "  public:\n");
-        fprintf(of, "    %s() : ::mig::Message(0x%x, allpars) {}\n",
+        fprintf(of, "    %s() : ::mig::Message(0x%x, m_params) {}\n",
           ep->message.name, ep->message.id);
         //fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
         if (pp)
@@ -591,7 +591,7 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "\n");
 
         fprintf(of, "  private:\n");
-        generate_allpars_vector(of, pp);
+        generate_m_params_vector(of, pp);
 
         fprintf(of, "};\n\n\n");
         break;
@@ -602,14 +602,14 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "struct %s : ::mig::GroupBase {\n\n", ep->group.name);
 
         fprintf(of, "  public:\n");
-        fprintf(of, "    %s() : ::mig::GroupBase(allpars) {}\n", ep->group.name);
+        fprintf(of, "    %s() : ::mig::GroupBase(m_params) {}\n", ep->group.name);
         //fprintf(of, "    virtual ~%s() {}\n\n", ep->group.name);
         if (pp)
           generate_parameters(of, pp);
         fprintf(of, "\n");
 
         fprintf(of, "  private:\n");
-        generate_allpars_vector(of, pp);
+        generate_m_params_vector(of, pp);
 
         fprintf(of, "};\n\n\n");
         break;

@@ -1,6 +1,11 @@
 
 #include "../migmsg.h"
 #include <iostream>
+#include <iomanip>
+
+extern "C" {
+#include <arpa/inet.h>
+}
 
 // Prototyping API
 //
@@ -148,14 +153,14 @@ int main() {
             << ", size " << m2.param8.size()
             << '\n';
 
-  std::cout << "Message"
-            << "is valid "
-            << m2.is_valid()
-            << " size "
+  std::cout << "Message "
+            << ((m2.is_valid()) ? "is valid " : "not valid ")
+            << "size "
             << m2.size()
-            << " wire size "
-            << m2.wire_size()
             << "\n";
 
+
+  m2.to_wire();
 }
+
 

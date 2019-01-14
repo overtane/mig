@@ -1,4 +1,4 @@
-SRCS = mig_tests.cpp msg_tests.cpp
+SRCS = mig_tests.cpp msg_tests.cpp ../migmsg.cpp
 OBJS = $(SRCS:.cpp=.o)
 GTEST_DIR?=../../googletest/googletest
 GTEST_SRC= ${GTEST_DIR}/src/gtest-all.cc
