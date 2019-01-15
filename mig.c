@@ -520,7 +520,7 @@ static void generate_parameters(FILE *of, struct parameter *pp)
       datatype = ep->datatype.type; 
       partype = (ep->datatype.composite)? "composite" : "scalar";
     } else if (ep->type == ET_ENUM) 
-      partype = "scalar";
+      partype = "enum";
 
     if (partype)
       fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
@@ -618,15 +618,15 @@ void generate_cpp( struct element *ep, FILE *of)
     case ET_ENUM: {
         int value = 0;
         struct enumerator *pp = ep->enumeration.enumerators;
-        fprintf(of, "enum %s : ::mig::enum_t {\n", ep->enumeration.name);
+        fprintf(of, "enum class %s : ::mig::enum_t {\n", ep->enumeration.name);
 
         while (pp) {
-          fprintf(of, "  k%s%s = %d,\n", ep->enumeration.name, pp->name, pp->value);
+          fprintf(of, "  %s = %d,\n", pp->name, pp->value);
           if (pp->value > value)
             value = pp->value;
           pp = pp->next;
         }
-        fprintf(of, "  k%sCount = %d\n", ep->enumeration.name, ++value);
+        fprintf(of, "  Count = %d\n", ++value);
 
         fprintf(of, "};\n\n\n");
         break;

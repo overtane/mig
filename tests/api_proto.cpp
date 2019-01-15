@@ -14,7 +14,7 @@ extern "C" {
 // --
 // 'Generated' definitions 
 
-enum TestEnum1 : ::mig::enum_t {
+enum class TestEnum1 : mig::enum_t {
   VALUE1 = 1,
   VALUE2 = 99
 };
@@ -43,7 +43,7 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
     ::mig::scalar_parameter<std::uint32_t> param3{2, ::mig::OPTIONAL};  
     ::mig::scalar_parameter<mig::void_t> param4{3};  
-    ::mig::scalar_parameter<TestEnum1> param5{4};  
+    ::mig::enum_parameter<TestEnum1> param5{4};  
 
     ::mig::group_parameter<TestGroup1> param6{5};
     ::mig::composite_parameter<std::string> param7{6};
@@ -62,7 +62,7 @@ int main() {
   //m2.param3.set(12345567);
   m2.param4.set();
 
-  m2.param5.set(VALUE2);
+  m2.param5 = TestEnum1::VALUE2;
   //std::cout << m2.param7.size() << '\n';
 
   m2.param6.m_group.param1.set(2);
@@ -120,7 +120,7 @@ int main() {
   std::cout << "Param5 id "
             << m2.param5.id()
             << ", value "
-            << m2.param5.get() + 0
+            << int(m2.param5.get()) 
             << ", defined " << m2.param5.is_set()
             << ", optional " << m2.param5.is_optional()
             << ", size " << m2.param5.size()

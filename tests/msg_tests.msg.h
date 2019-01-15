@@ -2,17 +2,17 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Mon Jan 14 12:55:18 2019
+//  Tue Jan 15 02:02:07 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
 
 #include "migmsg.h"
 
-enum TestEnum1 : ::mig::enum_t {
-  kTestEnum1VALUE1 = 0,
-  kTestEnum1VALUE2 = 1,
-  kTestEnum1Count = 2
+enum class TestEnum1 : ::mig::enum_t {
+  VALUE1 = 0,
+  VALUE2 = 1,
+  Count = 2
 };
 
 
@@ -101,7 +101,7 @@ class TestMessage1005 : public ::mig::Message {
 
   public:
     TestMessage1005() : ::mig::Message(0x1389, m_params) {}
-    ::mig::scalar_parameter<TestEnum1> Param1{92};
+    ::mig::enum_parameter<TestEnum1> Param1{92};
     ::mig::group_parameter<TestGroup1> Param2{12, ::mig::OPTIONAL};
 
   private:
