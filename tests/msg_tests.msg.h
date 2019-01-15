@@ -2,7 +2,7 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Tue Jan 15 22:13:45 2019
+//  Tue Jan 15 22:57:39 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -31,11 +31,13 @@ struct TestGroup1 : ::mig::GroupBase {
 
   public:
     TestGroup1() : ::mig::GroupBase(m_params) {}
-    ::mig::scalar_parameter<::mig::void_t> Param1{0};
+    ::mig::scalar_parameter<::mig::void_t> param1{0};
+    ::mig::scalar_parameter<uint32_t> param2{9};
 
   private:
     std::map<int, ::mig::parameter&> m_params = {
-      {0, Param1},
+      {0, param1},
+      {9, param2},
     };
 };
 
@@ -48,6 +50,8 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::scalar_parameter<uint8_t> param2{1};
     ::mig::scalar_parameter<int16_t> param3{2};
     ::mig::scalar_parameter<uint32_t> param4{3, ::mig::OPTIONAL};
+    ::mig::enum_parameter<TestEnum1> param5{12, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<bool> param6{13, ::mig::OPTIONAL};
 
   private:
     std::map<int, ::mig::parameter&> m_params = {
@@ -55,6 +59,8 @@ class TestMessage1002 : public ::mig::Message {
       {1, param2},
       {2, param3},
       {3, param4},
+      {12, param5},
+      {13, param6},
     };
 };
 
@@ -63,51 +69,19 @@ class TestMessage1003 : public ::mig::Message {
 
   public:
     TestMessage1003() : ::mig::Message(0x1003, m_params) {}
-    ::mig::scalar_parameter<::mig::void_t> Param1{0};
-    ::mig::scalar_parameter<bool> Param2{1};
-    ::mig::scalar_parameter<uint8_t> Param3{2};
-    ::mig::composite_parameter<::mig::blob_t> Param4{3};
+    ::mig::composite_parameter<std::string> param1{2};
+    ::mig::composite_parameter<::mig::blob_t> param2{4};
+    ::mig::group_parameter<TestGroup1> param3{6};
+    ::mig::scalar_parameter<::mig::void_t> param4{3, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<uint8_t> param5{5};
 
   private:
     std::map<int, ::mig::parameter&> m_params = {
-      {0, Param1},
-      {1, Param2},
-      {2, Param3},
-      {3, Param4},
-    };
-};
-
-
-class TestMessage1004 : public ::mig::Message {
-
-  public:
-    TestMessage1004() : ::mig::Message(0x1388, m_params) {}
-    ::mig::scalar_parameter<::mig::void_t> Param1{0, ::mig::OPTIONAL};
-    ::mig::scalar_parameter<bool> Param2{1, ::mig::OPTIONAL};
-    ::mig::scalar_parameter<uint8_t> Param3{2, ::mig::OPTIONAL};
-    ::mig::composite_parameter<::mig::blob_t> Param4{3};
-
-  private:
-    std::map<int, ::mig::parameter&> m_params = {
-      {0, Param1},
-      {1, Param2},
-      {2, Param3},
-      {3, Param4},
-    };
-};
-
-
-class TestMessage1005 : public ::mig::Message {
-
-  public:
-    TestMessage1005() : ::mig::Message(0x1389, m_params) {}
-    ::mig::enum_parameter<TestEnum1> Param1{92};
-    ::mig::group_parameter<TestGroup1> Param2{12, ::mig::OPTIONAL};
-
-  private:
-    std::map<int, ::mig::parameter&> m_params = {
-      {92, Param1},
-      {12, Param2},
+      {2, param1},
+      {4, param2},
+      {6, param3},
+      {3, param4},
+      {5, param5},
     };
 };
 

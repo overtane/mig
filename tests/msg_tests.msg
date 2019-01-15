@@ -33,7 +33,8 @@ message TestMessage1001 = 4097 { }
 
 // group with one parameter
 group TestGroup1 {
-  void Param1 = 0;
+  void param1 = 0;
+  uint32 param2 = 9;
 }
 
 // message with scalar parameters
@@ -42,28 +43,16 @@ message TestMessage1002 = 4098 {
   uint8 param2 = 1;
   int16 param3 = 2;
   uint32 param4 = 3 [optional];
+  TestEnum1 param5 = 12 [optional];
+  bool param6 = 13 [optional];
 }
 
-// message with several mandatory parameters
+// message with composite parameters
 message TestMessage1003 = 4099 {
-  void Param1 = 0; 
-  bool Param2 = 1; 
-  uint8 Param3 = 2; 
-  blob Param4 = 3; 
-}
-
-// message with several optional parameters
-message TestMessage1004 = 5000 {
-  void Param1 = 0 [optional]; 
-  bool Param2 = 1 [ optional ]; 
-  // syntax allows repeated attributes (just testing parser)
-  uint8 Param3 = 2 [ optional,optional, repeated, optional, repeated, repeated ]; 
-  blob Param4 = 3 ; 
-}
-
-// message with aggregate parameters
-message TestMessage1005 = 5001 {
-  TestEnum1 Param1 = 92;
-  TestGroup1 Param2 = 12 [optional];
+  string param1 = 2; 
+  blob param2 = 4; 
+  TestGroup1 param3 = 6; 
+  void param4 = 3 [optional, optional];
+  uint8 param5 = 5; 
 }
 
