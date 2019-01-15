@@ -41,16 +41,17 @@ class msgbuf : public MsgBuf {
     msgbuf(size_t n) { alloc_buf(n); }
     ~msgbuf() { if (data) delete[] data; }
     
-    uint8_t *alloc_buf(size_t n) {
+    uint8_t *alloc_buf(size_t n) override {
       if (data)
         delete[] data;
       data = new uint8_t[n];
       size = n;
       return data;
     }
-    uint8_t *set_buf(uint8_t *buf, size_t n) { data = buf; size = n; return data; }
+    uint8_t *set_buf(uint8_t *buf, size_t n) override 
+      { data = buf; size = n; return data; }
     
-    int put(uint8_t c) { 
+    int put(uint8_t c) override { 
       if (data && next < size ) {
         data[next] = c;
         next++;
@@ -59,14 +60,14 @@ class msgbuf : public MsgBuf {
       return -1;
     }
     
-    int put(const uint8_t *p, size_t n) { 
+    int put(const uint8_t *p, size_t n) override { 
       while (next < size && n-- && data) { // TODO optimize!!
         data[next++] = *p++;
       }
       return (n)? -1 : 0;
     }
 
-    uint8_t get() {
+    uint8_t get() override {
       if (data && next < size ) {
         uint8_t c = data[next];
         next++;
@@ -75,14 +76,29 @@ class msgbuf : public MsgBuf {
       return -1;
     }
     
-    void reset() { next = 0; }
+    void reset() override { this->next = 0; }
   
+    uint8_t *current() const override {
+        return &this->data[this->next];
+    }
+
+    void advance(size_t n) override { this->next += n; }
+
+    void hexdump(std::ostream& os) const override {
+      os << std::setfill('0');
+      for (auto i=0; i < this->size; i++)
+        os << std::hex << std::setw(2) << int(this->data[i]) << ' ';
+      os << '\n';
+    }
+
   private:
     
-    unsigned char *data = nullptr;
+    uint8_t *data = nullptr;
     size_t size = 0;
     int next = 0;
 };
+
+
 
 class SampleProto : public WireFormat {
 
@@ -102,6 +118,8 @@ class SampleProto : public WireFormat {
     int to_wire(const parameter&) override;
  
     using WireFormat::to_wire;
+
+    void hexdump(std::ostream&, const Message&) const override;
 };
 
 
@@ -125,11 +143,13 @@ size_t SampleProto::wire_size(const Message& msg) {
   auto s = msg_wire_overhead;
   for (auto it : msg.params())
     s += wire_size(*it);
+
+  std::cout << s << '\n';
   return s;
 }
 
 size_t SampleProto::wire_size(const GroupBase& group) {
-  auto s = 0;
+  auto s = 1;
   for (auto it : group.params())
     s += wire_size(*it);
   return s;
@@ -141,10 +161,11 @@ size_t SampleProto::wire_size(const parameter& par) {
 // for variable size parameters, data size is given before data
 
   if (par.is_set()) {
-    auto s = par_wire_overhead;
+    auto s = par_wire_overhead; // par id
     if  (!par.is_fixed_size() && !par.is_group())
-      s++;
-    s = par.wire_size(*this);
+      s += 2; // data size
+    s += par.wire_size(*this); // data
+    std::cout << par.id() << ": " << s << '\n';
     return s;
   }
   return 0;
@@ -163,7 +184,9 @@ int SampleProto::to_wire(const Message& msg) {
   for (auto it : msg.params())
     to_wire(*it); // serialize each parameter
  
-  to_wire((uint8_t)0x03); // ETX
+  to_wire((uint8_t)0xFF); // end of message 
+
+  buf()->reset(); // read pointer to start of buffer
 
   return 0;
 }
@@ -177,7 +200,7 @@ int SampleProto::to_wire(const parameter& par) {
   std::cout << "par: " << par.id() << '\n';
   if (par.is_set()) {
     to_wire((uint8_t)par.id());
-    if (!par.is_fixed_size()) 
+    if  (!par.is_fixed_size() && !par.is_group())
       to_wire((uint16_t)par.size());
     par.data_to_wire(*this);
   }
@@ -194,8 +217,25 @@ int SampleProto::to_wire(const GroupBase& group) {
   for (auto it : group.params())
     to_wire(*it); // serialize each parameter
  
+  to_wire((uint8_t)0xFF); // end of message 
   std::cout << "end group" << '\n';
   return 0;
 }
 
+void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
+
+  (void)msg;
+  uint16_t id, size; 
+
+  buf()->reset();
+  from_wire(id);
+  from_wire(size);
+
+  os << std::setfill('0');
+  os << "Message: 0x" << std::hex << std::setw(4) << id;
+  os << std::dec << ", length " << size << '\n';
+
+  buf()->hexdump(os);
 }
+
+} // namespace mig

@@ -30,6 +30,7 @@
 #include <string>
 #include <cstdint>
 #include <cstddef>
+#include <iostream>
 
 namespace mig {
 
@@ -71,6 +72,11 @@ class MsgBuf {
     virtual uint8_t get() = 0;
     //! reset buffer pointer to the start of buffer
     virtual void reset() = 0; //
+    virtual uint8_t *current() const = 0;
+    virtual void advance(size_t) = 0;
+
+    //! hexdump buffer contents to stream
+    virtual void hexdump(std::ostream&) const = 0;
 };
 
 //! Interface class for wire formatting (serialize/deserialize)
@@ -83,13 +89,13 @@ class WireFormat {
     static WireFormat *factory(Message&);
 
     void set_byteorder(ByteOrder w) { this->m_byteorder = w; }
-    ByteOrder byteorder() { return this->m_byteorder; }
+    ByteOrder byteorder() const { return this->m_byteorder; }
 
     void set_buf(MsgBuf *buf) { this->m_buf = buf; }
-    MsgBuf *buf() { return this->m_buf; }
+    MsgBuf *buf() const { return this->m_buf; }
 
     void set_size(size_t size) { this->m_size = size; }
-    size_t size() { return this->m_size; }
+    size_t size() const { return this->m_size; }
 
     virtual size_t wire_size(const GroupBase&) = 0;
     virtual size_t wire_size(const Message&) = 0;
@@ -110,6 +116,17 @@ class WireFormat {
     virtual int to_wire(bool);
     virtual int to_wire(const blob_t&);
     virtual int to_wire(const std::string&);
+
+    virtual int from_wire(int8_t&) const;
+    virtual int from_wire(int16_t&) const;
+    virtual int from_wire(int32_t&) const;
+    virtual int from_wire(int64_t&) const;
+    virtual int from_wire(uint8_t&) const;
+    virtual int from_wire(uint16_t&) const;
+    virtual int from_wire(uint32_t&) const;
+    virtual int from_wire(uint64_t&) const;
+
+    virtual void hexdump(std::ostream&, const Message&) const = 0;
 
   private:
     MsgBuf *m_buf; //!< Buffer area
@@ -171,11 +188,11 @@ class GroupBase {
         return s;
     } 
     bool is_set() const { return this->is_valid(); } // group is set if it is valid
-    size_t wire_size(WireFormat& w) const {
-        auto s = 0;
-        for (auto it : this->m_params) s += w.wire_size(*it);
-        return s;;
-    }
+    size_t wire_size(WireFormat& w) const { return w.wire_size(*this); }
+    //    auto s = 0;
+    //    for (auto it : this->m_params) s += w.wire_size(*it);
+    //    return s;;
+    //}
 
   private:
     std::vector<::mig::parameter * const>& m_params; // this is a reference to actual vector
@@ -187,7 +204,7 @@ class Message : public GroupBase {
   public:
     Message(int id, std::vector<::mig::parameter * const>& m_params) : 
         GroupBase(m_params), m_id(id) {}
-    ~Message() {if (m_wire_format) delete m_wire_format; }
+    ~Message() { if (m_wire_format) delete m_wire_format; }
 
     int id() const { return this->m_id; }
 
@@ -197,10 +214,12 @@ class Message : public GroupBase {
       m_wire_format = WireFormat::factory(*this);
       return m_wire_format;
     }
-    WireFormat* get_wire_format() { return m_wire_format; }
- 
-    const Message& me = *this;
+    WireFormat* wire_format() const { return m_wire_format; }
 
+    void hexdump(std::ostream& os) const {
+      if (this->wire_format())
+        this->wire_format()->hexdump(os, *this);
+    }
   private:
     const int m_id;
     WireFormat *m_wire_format = nullptr;
@@ -279,7 +298,8 @@ class composite_parameter : public parameter {
     virtual ~composite_parameter() { if (m_data) delete m_data; } 
 
     void set(T* data) {
-        if (this->m_data) delete m_data;
+        if (this->m_data)
+          delete m_data;
         this->m_data = data;
         this->parameter::set();
     }

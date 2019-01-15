@@ -104,15 +104,54 @@ int WireFormat::to_wire(int64_t value) {
   return to_wire((uint64_t)value);
 }
 
-#if 0
-static void dummy()
-{
-  char a = 0x42;
+// TODO limit checks
 
-  std::cout << std::setfill('0');
-
-  std::cout << std::hex << std::setw(2) << (int)a << ' ';
-  std::cout << std::hex << std::setw(2) << (int)a << '\n';
+int WireFormat::from_wire(int8_t& data) const {
+  data = (int8_t)buf()->get();
+  return 0;
 }
-#endif
+
+int WireFormat::from_wire(int16_t& data) const {
+  data = (int16_t)ntohs(*(uint16_t*)(buf()->current()));
+  buf()->advance(2);
+  return 0;
+}
+
+int WireFormat::from_wire(int32_t& data) const {
+  data = (int32_t)ntohl(*(uint32_t*)(buf()->current()));
+  buf()->advance(4);
+  return 0;
+}
+
+int WireFormat::from_wire(int64_t& data) const {
+  data = 0; // TODO;
+  buf()->advance(8);
+  return 0;
+}
+
+int WireFormat::from_wire(uint8_t& data) const {
+  data = buf()->get();
+  return 0;
+}
+
+int WireFormat::from_wire(uint16_t& data) const {
+  data = ntohs(*(uint16_t*)(buf()->current()));
+  buf()->advance(2);
+  return 0;
+}
+
+int WireFormat::from_wire(uint32_t& data) const {
+  data = ntohs(*(uint32_t*)(buf()->current()));
+  buf()->advance(4);
+  return 0;
+}
+
+int WireFormat::from_wire(uint64_t& data) const {
+  data = 0; // TODO
+  buf()->advance(8);
+  return 0;
+}
+
+
+
 }

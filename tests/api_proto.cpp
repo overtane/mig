@@ -161,6 +161,7 @@ int main() {
 
 
   m2.to_wire();
+  m2.hexdump(std::cout);
 }
 
 
