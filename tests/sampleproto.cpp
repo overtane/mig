@@ -141,8 +141,8 @@ WireFormat* WireFormat::factory(Message& msg) {
 
 size_t SampleProto::wire_size(const Message& msg) {
   auto s = msg_wire_overhead;
-  for (auto it : msg.params())
-    s += wire_size(*it);
+  for (auto& it : msg.params())
+    s += wire_size(it.second);
 
   std::cout << s << '\n';
   return s;
@@ -150,8 +150,8 @@ size_t SampleProto::wire_size(const Message& msg) {
 
 size_t SampleProto::wire_size(const GroupBase& group) {
   auto s = 1;
-  for (auto it : group.params())
-    s += wire_size(*it);
+  for (auto& it : group.params())
+    s += wire_size(it.second);
   return s;
 }
 
@@ -181,8 +181,8 @@ int SampleProto::to_wire(const Message& msg) {
   to_wire((uint16_t)msg.id());
   to_wire((uint16_t)this->size()); // wire format size 
 
-  for (auto it : msg.params())
-    to_wire(*it); // serialize each parameter
+  for (auto& it : msg.params())
+    to_wire(it.second); // serialize each parameter
  
   to_wire((uint8_t)0xFF); // end of message 
 
@@ -214,8 +214,8 @@ int SampleProto::to_wire(const GroupBase& group) {
 
   std::cout << "group" << '\n';
 
-  for (auto it : group.params())
-    to_wire(*it); // serialize each parameter
+  for (auto& it : group.params())
+    to_wire(it.second); // serialize each parameter
  
   to_wire((uint8_t)0xFF); // end of message 
   std::cout << "end group" << '\n';

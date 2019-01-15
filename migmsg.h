@@ -27,6 +27,7 @@
 */
 
 #include <vector>
+#include <map>
 #include <string>
 #include <cstdint>
 #include <cstddef>
@@ -173,36 +174,32 @@ class GroupBase {
 
   public:
     GroupBase() = delete;
-    GroupBase(std::vector<::mig::parameter * const>& params) : m_params(params)  {}
+    GroupBase(std::map<int, ::mig::parameter&>& params) : m_params(params)  {}
     virtual ~GroupBase() {}
 
     int nparams() { return this->m_params.size(); } 
-    std::vector<::mig::parameter * const>& params() const { return this->m_params; }
+    std::map<int, ::mig::parameter&>& params() const { return this->m_params; }
     bool is_valid() const {
-        for (auto it : this->m_params) if (!it->is_valid()) return false;
+        for (auto& it : this->m_params) if (!it.second.is_valid()) return false;
         return true;
     }
     std::size_t size() const {
         std::size_t s = 0;
-        for (auto it : this->m_params) s += it->size();
+        for (auto& it : this->m_params) s += it.second.size();
         return s;
     } 
     bool is_set() const { return this->is_valid(); } // group is set if it is valid
     size_t wire_size(WireFormat& w) const { return w.wire_size(*this); }
-    //    auto s = 0;
-    //    for (auto it : this->m_params) s += w.wire_size(*it);
-    //    return s;;
-    //}
 
   private:
-    std::vector<::mig::parameter * const>& m_params; // this is a reference to actual vector
+    std::map<int, ::mig::parameter&>& m_params; // this is a reference to the actual mapr
 };
 
 
 class Message : public GroupBase {
 
   public:
-    Message(int id, std::vector<::mig::parameter * const>& m_params) : 
+    Message(int id, std::map<int, ::mig::parameter&>& m_params) : 
         GroupBase(m_params), m_id(id) {}
     ~Message() { if (m_wire_format) delete m_wire_format; }
 

@@ -2,7 +2,7 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Tue Jan 15 02:02:07 2019
+//  Tue Jan 15 22:13:45 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -22,7 +22,7 @@ class TestMessage1001 : public ::mig::Message {
     TestMessage1001() : ::mig::Message(0x1001, m_params) {}
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
+    std::map<int, ::mig::parameter&> m_params = {
     };
 };
 
@@ -34,8 +34,8 @@ struct TestGroup1 : ::mig::GroupBase {
     ::mig::scalar_parameter<::mig::void_t> Param1{0};
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
-      &Param1,
+    std::map<int, ::mig::parameter&> m_params = {
+      {0, Param1},
     };
 };
 
@@ -50,11 +50,11 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::scalar_parameter<uint32_t> param4{3, ::mig::OPTIONAL};
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
-      &param1,
-      &param2,
-      &param3,
-      &param4,
+    std::map<int, ::mig::parameter&> m_params = {
+      {0, param1},
+      {1, param2},
+      {2, param3},
+      {3, param4},
     };
 };
 
@@ -69,11 +69,11 @@ class TestMessage1003 : public ::mig::Message {
     ::mig::composite_parameter<::mig::blob_t> Param4{3};
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
-      &Param1,
-      &Param2,
-      &Param3,
-      &Param4,
+    std::map<int, ::mig::parameter&> m_params = {
+      {0, Param1},
+      {1, Param2},
+      {2, Param3},
+      {3, Param4},
     };
 };
 
@@ -88,11 +88,11 @@ class TestMessage1004 : public ::mig::Message {
     ::mig::composite_parameter<::mig::blob_t> Param4{3};
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
-      &Param1,
-      &Param2,
-      &Param3,
-      &Param4,
+    std::map<int, ::mig::parameter&> m_params = {
+      {0, Param1},
+      {1, Param2},
+      {2, Param3},
+      {3, Param4},
     };
 };
 
@@ -105,9 +105,9 @@ class TestMessage1005 : public ::mig::Message {
     ::mig::group_parameter<TestGroup1> Param2{12, ::mig::OPTIONAL};
 
   private:
-    std::vector<::mig::parameter * const> m_params = {
-      &Param1,
-      &Param2,
+    std::map<int, ::mig::parameter&> m_params = {
+      {92, Param1},
+      {12, Param2},
     };
 };
 

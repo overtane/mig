@@ -3,13 +3,15 @@
 #include <iostream>
 #include <iomanip>
 
+/* Prototype and playground for API generation */
+
 extern "C" {
 #include <arpa/inet.h>
 }
 
 // Prototyping API
 //
-// g++ -Wall -std=c++14 -o proto api_proto.cpp
+// g++ -Wall -std=c++14 -o proto api_proto.cpp -I.. ../migmsg.cpp sampleproto.cpp
 
 // --
 // 'Generated' definitions 
@@ -23,20 +25,17 @@ struct TestGroup1 : ::mig::GroupBase {
     ::mig::scalar_parameter<std::int16_t> param1{0, ::mig::OPTIONAL};
     ::mig::scalar_parameter<std::int32_t> param2{1, ::mig::OPTIONAL};
 
-    TestGroup1() : ::mig::GroupBase(allpars) {}
+    TestGroup1() : ::mig::GroupBase(m_params) {}
     virtual ~TestGroup1() {}
   private:
-    std::vector<::mig::parameter * const> allpars = { &param1, &param2 };
+    std::map<int, ::mig::parameter&> m_params = { {0, param1}, {1, param2} };
 
 };
 
 class TestMessage1002 : public ::mig::Message {
 
-    std::vector<::mig::parameter * const> allpars = {
-      &param1, &param2, &param3, &param4, &param5, &param6, &param7, &param8 };
-
   public:
-    TestMessage1002() : ::mig::Message(0x1002, allpars) {}
+    TestMessage1002() : ::mig::Message(0x1002, m_params) {}
     virtual ~TestMessage1002() {}
 
     ::mig::scalar_parameter<std::int8_t> param1{0, ::mig::OPTIONAL};
@@ -48,6 +47,18 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::group_parameter<TestGroup1> param6{5};
     ::mig::composite_parameter<std::string> param7{6};
     ::mig::composite_parameter<mig::blob_t> param8{7};
+
+  private:
+    std::map<int, ::mig::parameter&> m_params = {
+      {0, param1},
+      {1, param2},
+      {2, param3},
+      {3, param4},
+      {4, param5},
+      {5, param6},
+      {6, param7},
+      {7, param8}
+  };
 };
 
 // --

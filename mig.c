@@ -495,9 +495,9 @@ mig_creat_parameter(const char *type,
 
 static void generate_m_params_vector(FILE *of, struct parameter *pp) 
 {
-  fprintf(of, "    std::vector<::mig::parameter * const> m_params = {\n");
+  fprintf(of, "    std::map<int, ::mig::parameter&> m_params = {\n");
   while (pp) {
-    fprintf(of, "      &%s,\n", pp->name);
+    fprintf(of, "      {%d, %s},\n", pp->id, pp->name);
     pp = pp->next;
   }
   fprintf(of, "    };\n");
