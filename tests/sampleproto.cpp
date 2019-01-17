@@ -165,7 +165,7 @@ size_t SampleProto::wire_size(const parameter& par) {
 
   if (par.is_set()) {
     auto s = par_wire_overhead; // par id
-    if  (!par.is_fixed_size() && !par.group())
+    if  (!par.is_scalar() && !par.group())
       s += 2; // data size
     s += par.wire_size(*this); // data
     std::cout << par.id() << ": " << s << '\n';
@@ -203,7 +203,7 @@ int SampleProto::to_wire(const parameter& par) {
   std::cout << "par: " << par.id() << '\n';
   if (par.is_set()) {
     to_wire((uint8_t)par.id());
-    if  (!par.is_fixed_size() && !par.group())
+    if  (!par.is_scalar() && !par.group())
       to_wire((uint16_t)par.size());
     par.data_to_wire(*this);
   }
@@ -261,7 +261,7 @@ void SampleProto::dump(std::ostream& os, const GroupBase& group, int id) const {
         // group parameter
         os << "  Group " << std::dec << id << ": ";
 
-      if (par.is_fixed_size()) {
+      if (par.is_scalar()) {
         size = par.size(); 
         uint8_t *p = buf()->getp(); // TODO getp(size);
         os << std::setfill('0');

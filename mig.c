@@ -388,7 +388,7 @@ int mig_add_element(const struct element *ep)
 }
 
 struct element *
-mig_creat_datatype(const char *name, const char *native_name, int is_composite)
+mig_creat_datatype(const char *name, const char *native_name, int is_var)
 {
   struct element *ep = (struct element *)malloc(sizeof(*ep));
 
@@ -399,7 +399,7 @@ mig_creat_datatype(const char *name, const char *native_name, int is_composite)
 
     ep->datatype.name = ep->name;
     ep->datatype.type = strdup(native_name);
-    ep->datatype.composite = is_composite;
+    ep->datatype.var = is_var;
   }
 
   return ep;
@@ -518,7 +518,7 @@ static void generate_parameters(FILE *of, struct parameter *pp)
       partype = "group";
     else if (ep->type == ET_DATATYPE) {
       datatype = ep->datatype.type; 
-      partype = (ep->datatype.composite)? "composite" : "scalar";
+      partype = (ep->datatype.var)? "var" : "scalar";
     } else if (ep->type == ET_ENUM) 
       partype = "enum";
 

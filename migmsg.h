@@ -143,10 +143,10 @@ class WireFormat {
 class parameter {
 
   public:
-    parameter(int id, bool is_optional, bool is_fixed_size=true, GroupBase* group=nullptr) :
+    parameter(int id, bool is_optional, bool is_scalar=true, GroupBase* group=nullptr) :
         m_id(id),
         m_is_optional(is_optional),
-        m_is_fixed_size(is_fixed_size),
+        m_is_scalar(is_scalar),
         m_group(group)
     {}
     virtual ~parameter() {}
@@ -154,7 +154,7 @@ class parameter {
     void set() { this->m_is_set = true; }
     bool is_optional() const { return this->m_is_optional; }
     int  id() const { return this->m_id; }
-    bool is_fixed_size() const { return this->m_is_fixed_size; }
+    bool is_scalar() const { return this->m_is_scalar; }
     GroupBase* group() const { return this->m_group; }
 
     virtual bool is_set() const { return this->m_is_set; }
@@ -168,7 +168,7 @@ class parameter {
   private:
     const int m_id;
     const bool m_is_optional;
-    const bool m_is_fixed_size;
+    const bool m_is_scalar;
     GroupBase *m_group;
     bool m_is_set = false;
 };
@@ -297,11 +297,11 @@ class group_parameter : public parameter {
 };
 
 template <class T>
-class composite_parameter : public parameter {
+class var_parameter : public parameter {
 
   public:
-    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
-    virtual ~composite_parameter() { if (m_data) delete m_data; } 
+    var_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
+    virtual ~var_parameter() { if (m_data) delete m_data; } 
 
     void set(T* data) {
         if (this->m_data)
@@ -320,12 +320,12 @@ class composite_parameter : public parameter {
 };
 
 template <>
-class composite_parameter <std::string>: public parameter
+class var_parameter <std::string>: public parameter
 {   
 
   public:
-    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
-    virtual ~composite_parameter() {} 
+    var_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
+    virtual ~var_parameter() {} 
 
     void set(std::string data) { this->m_data = data; this->parameter::set(); }
     std::string& get() { return this->m_data; }

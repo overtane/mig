@@ -2,7 +2,7 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Wed Jan 16 15:15:00 2019
+//  Thu Jan 17 13:16:23 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -69,8 +69,8 @@ class TestMessage1003 : public ::mig::Message {
 
   public:
     TestMessage1003() : ::mig::Message(0x1003, m_params) {}
-    ::mig::composite_parameter<std::string> param1{2};
-    ::mig::composite_parameter<::mig::blob_t> param2{4};
+    ::mig::var_parameter<std::string> param1{2};
+    ::mig::var_parameter<::mig::blob_t> param2{4};
     ::mig::group_parameter<TestGroup1> param3{6};
     ::mig::scalar_parameter<::mig::void_t> param4{3, ::mig::OPTIONAL};
     ::mig::scalar_parameter<uint8_t> param5{5};

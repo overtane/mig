@@ -53,7 +53,7 @@ struct enumerator {
 struct datatype {
   const char *name;
   const char *type; /*< native data type */
-  int composite;
+  int var; /* variable length */
 };
 
 struct message {

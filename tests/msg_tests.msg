@@ -18,8 +18,8 @@ type uint16 = uint16_t;
 type uint32 = uint32_t;
 type uint64 = uint64_t;
 type bool   = bool;
-type string = std::string [composite];
-type blob   = ::mig::blob_t [composite];
+type string = std::string [var];
+type blob   = ::mig::blob_t [var];
 type void   = ::mig::void_t;
 
 // enum with two values
