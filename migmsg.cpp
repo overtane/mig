@@ -107,18 +107,18 @@ int WireFormat::to_wire(int64_t value) {
 // TODO limit checks
 
 int WireFormat::from_wire(int8_t& data) const {
-  data = (int8_t)buf()->get();
+  data = (int8_t)buf()->getc();
   return 0;
 }
 
 int WireFormat::from_wire(int16_t& data) const {
-  data = (int16_t)ntohs(*(uint16_t*)(buf()->current()));
+  data = (int16_t)ntohs(*(uint16_t*)(buf()->getp()));
   buf()->advance(2);
   return 0;
 }
 
 int WireFormat::from_wire(int32_t& data) const {
-  data = (int32_t)ntohl(*(uint32_t*)(buf()->current()));
+  data = (int32_t)ntohl(*(uint32_t*)(buf()->getp()));
   buf()->advance(4);
   return 0;
 }
@@ -130,18 +130,18 @@ int WireFormat::from_wire(int64_t& data) const {
 }
 
 int WireFormat::from_wire(uint8_t& data) const {
-  data = buf()->get();
+  data = buf()->getc();
   return 0;
 }
 
 int WireFormat::from_wire(uint16_t& data) const {
-  data = ntohs(*(uint16_t*)(buf()->current()));
+  data = ntohs(*(uint16_t*)(buf()->getp()));
   buf()->advance(2);
   return 0;
 }
 
 int WireFormat::from_wire(uint32_t& data) const {
-  data = ntohs(*(uint32_t*)(buf()->current()));
+  data = ntohs(*(uint32_t*)(buf()->getp()));
   buf()->advance(4);
   return 0;
 }

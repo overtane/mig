@@ -67,19 +67,21 @@ class msgbuf : public MsgBuf {
       return (n)? -1 : 0;
     }
 
-    uint8_t get() override {
+    uint8_t getc() override {
       if (data && next < size ) {
         uint8_t c = data[next];
         next++;
         return c;
       }
-      return -1;
+      return 0xff;
     }
     
     void reset() override { this->next = 0; }
   
-    uint8_t *current() const override {
-        return &this->data[this->next];
+    uint8_t *getp() const override {
+        if (this->next < this->size)
+          return &this->data[this->next];
+        return nullptr;
     }
 
     void advance(size_t n) override { this->next += n; }
@@ -119,7 +121,8 @@ class SampleProto : public WireFormat {
  
     using WireFormat::to_wire;
 
-    void hexdump(std::ostream&, const Message&) const override;
+    void dump(std::ostream&, const Message&) const override;
+    void dump(std::ostream&, const GroupBase&, int) const override;
 };
 
 
@@ -162,7 +165,7 @@ size_t SampleProto::wire_size(const parameter& par) {
 
   if (par.is_set()) {
     auto s = par_wire_overhead; // par id
-    if  (!par.is_fixed_size() && !par.is_group())
+    if  (!par.is_fixed_size() && !par.group())
       s += 2; // data size
     s += par.wire_size(*this); // data
     std::cout << par.id() << ": " << s << '\n';
@@ -200,7 +203,7 @@ int SampleProto::to_wire(const parameter& par) {
   std::cout << "par: " << par.id() << '\n';
   if (par.is_set()) {
     to_wire((uint8_t)par.id());
-    if  (!par.is_fixed_size() && !par.is_group())
+    if  (!par.is_fixed_size() && !par.group())
       to_wire((uint16_t)par.size());
     par.data_to_wire(*this);
   }
@@ -222,6 +225,7 @@ int SampleProto::to_wire(const GroupBase& group) {
   return 0;
 }
 
+#if 0
 void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
 
   (void)msg;
@@ -236,6 +240,67 @@ void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
   os << std::dec << ", length " << size << '\n';
 
   buf()->hexdump(os);
+
+  dump(os, msg);
+}
+#endif
+
+void SampleProto::dump(std::ostream& os, const GroupBase& group, int id) const {
+
+  uint16_t size;
+
+  uint8_t c;
+  while ( (c = buf()->getc()) != 0xff) {
+    if (group.params().count(c) > 0) {
+      parameter& par = group.params().at(c);
+
+      if (dynamic_cast<const Message*>(&group))
+        // direct parameter
+        os << "- Parameter: " << std::dec  << int(c) << ": ";
+      else
+        // group parameter
+        os << "  Group " << std::dec << id << ": ";
+
+      if (par.is_fixed_size()) {
+        size = par.size(); 
+        uint8_t *p = buf()->getp(); // TODO getp(size);
+        os << std::setfill('0');
+        for (auto i=0; i < size; i++, p++)
+          os << std::hex << std::setw(2) << int(*p) << ' ';
+        os << '\n';
+        buf()->advance(size);
+      } else if (par.group()) {
+        os << '\n';
+        dump(os, *par.group(), c);
+        os << "- end group " << std::dec << int(c) << '\n';
+      } else {
+        from_wire(size);
+        uint8_t *p = buf()->getp(); // TODO getp(size);
+        for (auto i=0; i < size; i++, p++)
+          os << std::hex << std::setw(2) << int(*p) << ' ';
+        os << '\n';
+        buf()->advance(size);
+      }
+    } else 
+      os << "invalid\n"; 
+  }
+  
+}
+
+void SampleProto::dump(std::ostream& os, const Message& msg) const {
+
+  (void)msg;
+  uint16_t id, size; 
+
+  buf()->reset();
+  from_wire(id);
+  from_wire(size);
+
+  os << std::setfill('0');
+  os << "Message: 0x" << std::hex << std::setw(4) << id;
+  os << std::dec << ", length " << size << '\n';
+
+  dump(os, dynamic_cast<const GroupBase&>(msg), msg.id());
 }
 
 } // namespace mig

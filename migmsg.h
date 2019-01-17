@@ -70,10 +70,12 @@ class MsgBuf {
     //! put array of bytes and advance buffer pointer by n
     virtual int put(const uint8_t *p, size_t n) = 0;
     //! get one byte and advance buffer pointer by 1
-    virtual uint8_t get() = 0;
+    virtual uint8_t getc() = 0;
     //! reset buffer pointer to the start of buffer
     virtual void reset() = 0; //
-    virtual uint8_t *current() const = 0;
+    //! get pointer to buffer data
+    virtual uint8_t *getp() const = 0;
+    //! advance buffer pointer
     virtual void advance(size_t) = 0;
 
     //! hexdump buffer contents to stream
@@ -127,7 +129,8 @@ class WireFormat {
     virtual int from_wire(uint32_t&) const;
     virtual int from_wire(uint64_t&) const;
 
-    virtual void hexdump(std::ostream&, const Message&) const = 0;
+    virtual void dump(std::ostream&, const Message&) const = 0;
+    virtual void dump(std::ostream&, const GroupBase&, int) const = 0;
 
   private:
     MsgBuf *m_buf; //!< Buffer area
@@ -140,32 +143,33 @@ class WireFormat {
 class parameter {
 
   public:
-    parameter(int id, bool is_optional, bool is_group, bool is_fixed_size) :
+    parameter(int id, bool is_optional, bool is_fixed_size=true, GroupBase* group=nullptr) :
         m_id(id),
         m_is_optional(is_optional),
-        m_is_group(is_group),
-        m_is_fixed_size(is_fixed_size) {}
+        m_is_fixed_size(is_fixed_size),
+        m_group(group)
+    {}
     virtual ~parameter() {}
 
     void set() { this->m_is_set = true; }
     bool is_optional() const { return this->m_is_optional; }
     int  id() const { return this->m_id; }
-    bool is_group() const { return this->m_is_group; }
     bool is_fixed_size() const { return this->m_is_fixed_size; }
+    GroupBase* group() const { return this->m_group; }
 
     virtual bool is_set() const { return this->m_is_set; }
-    // size should be amount of data bytes to read/write to wire
-    // when parameter is not set, size equals always zero
     virtual std::size_t size() const = 0;
     virtual bool is_valid() const { return this->is_set() || this->is_optional(); }
     virtual void data_to_wire(WireFormat&) const = 0;
     virtual size_t wire_size(WireFormat& w) const { (void)w; return this->size(); };
 
+    GroupBase* g_group = nullptr;
+
   private:
     const int m_id;
     const bool m_is_optional;
-    const bool m_is_group;
     const bool m_is_fixed_size;
+    GroupBase *m_group;
     bool m_is_set = false;
 };
 
@@ -199,6 +203,8 @@ class GroupBase {
 class Message : public GroupBase {
 
   public:
+    static Message* factory();
+
     Message(int id, std::map<int, ::mig::parameter&>& m_params) : 
         GroupBase(m_params), m_id(id) {}
     ~Message() { if (m_wire_format) delete m_wire_format; }
@@ -213,9 +219,9 @@ class Message : public GroupBase {
     }
     WireFormat* wire_format() const { return m_wire_format; }
 
-    void hexdump(std::ostream& os) const {
+    void dump(std::ostream& os) const {
       if (this->wire_format())
-        this->wire_format()->hexdump(os, *this);
+        this->wire_format()->dump(os, *this);
     }
   private:
     const int m_id;
@@ -226,13 +232,13 @@ template <class T>
 class scalar_parameter : public parameter {
 
   public:
-    scalar_parameter(int id, bool optional=false) : parameter(id, optional, false, true) {}
+    scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
     scalar_parameter& operator=(T value) { this->set(value); return *this; } 
 
     void set(T value) { this->m_data = value; this->parameter::set(); }
     T get() const { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? sizeof(T): 0; }
+    std::size_t size() const override { return sizeof(T); }
     void data_to_wire(WireFormat& w) const override { w.to_wire(m_data); }
 
   private:
@@ -243,7 +249,7 @@ template <>
 class scalar_parameter <void_t> : public parameter {
 
   public:
-    scalar_parameter(int id, bool optional=false) : parameter(id, optional, false, true) {}
+    scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
 
     bool get() const { return this->is_set(); }
 
@@ -255,14 +261,14 @@ template <class T>
 class enum_parameter : public parameter {
 
   public:
-    enum_parameter(int id, bool optional=false) : parameter(id, optional, false, true) {}
+    enum_parameter(int id, bool optional=false) : parameter(id, optional) {}
     enum_parameter& operator=(T value) { this->set(value); return *this; } 
 
     void set(T value) { this->m_data = value; this->parameter::set(); }
     T get() const { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? sizeof(mig::enum_t) : 0; }
-    void data_to_wire(WireFormat& w) const override { w.to_wire(static_cast<mig::enum_t>(m_data)); }
+    std::size_t size() const override { return sizeof(mig::enum_t); }
+    void data_to_wire(WireFormat& w) const override { w.to_wire((enum_t)m_data); }
 
   private:
     T m_data = T(0);
@@ -272,26 +278,29 @@ template <class T>
 class group_parameter : public parameter {   
 
   public:
-    T m_group;
-
-    group_parameter(int id, bool optional=false) : parameter(id, optional, true, false) {}
+    group_parameter(int id, bool optional=false) : 
+      parameter(id, optional, false, (GroupBase*) &m_data) {} 
     virtual ~group_parameter() {} 
 
     // set(T group) // TODO this could be copy operation 
-    T& get() { return this->m_group; }
+    T& data() { return this->m_data; }
 
-    bool is_set() const override { return this->m_group.is_set(); }
-    std::size_t size() const override { return this->m_group.size(); }
-    bool is_valid() const override { return (this->m_group.is_valid() || this->is_optional()); }
-    size_t wire_size(WireFormat& w) const override { return this->m_group.wire_size(w); }
-    void data_to_wire(WireFormat& w) const override { w.to_wire(dynamic_cast<const GroupBase&>(m_group)); }
+    bool is_set() const override { return this->m_data.is_set(); }
+    std::size_t size() const override { return this->m_data.size(); }
+    bool is_valid() const override { return (this->m_data.is_valid() || this->is_optional()); }
+    size_t wire_size(WireFormat& w) const override { return this->m_data.wire_size(w); }
+    void data_to_wire(WireFormat& w) const override { w.to_wire((const GroupBase&)(m_data)); }
+
+  private:
+    T m_data;
+
 };
 
 template <class T>
 class composite_parameter : public parameter {
 
   public:
-    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, false) {}
+    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
     virtual ~composite_parameter() { if (m_data) delete m_data; } 
 
     void set(T* data) {
@@ -302,7 +311,7 @@ class composite_parameter : public parameter {
     }
     T* get() { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? this->m_data->size(): 0; }
+    std::size_t size() const override { return this->m_data->size(); }
     void data_to_wire(WireFormat& w) const override { w.to_wire(*m_data); }
 
   private:
@@ -315,22 +324,23 @@ class composite_parameter <std::string>: public parameter
 {   
 
   public:
-    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, false) {}
+    composite_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
     virtual ~composite_parameter() {} 
 
     void set(std::string data) { this->m_data = data; this->parameter::set(); }
     std::string& get() { return this->m_data; }
 
-    std::size_t size() const override { return (this->is_set()) ? this->m_data.size()+1: 0; }
+    std::size_t size() const override { return this->m_data.size()+1; }
     void data_to_wire(WireFormat& w) const override { w.to_wire(m_data); }
 
   private:
     std::string m_data;
 };
 
-} // end namespace mig
 
 
 // TODO repeated parameters
+
+} // end namespace mig
 
 #endif // ifndef _MIGMSG_H_

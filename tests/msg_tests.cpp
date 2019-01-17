@@ -61,7 +61,7 @@ TEST_F(MessageTests, Message1002)
 
   // message's initial state
   EXPECT_EQ(m2.nparams(), 6);
-  EXPECT_EQ(m2.size(), 0); // size is zero when all unset
+  EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_valid(), false);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.id(), 0x1002);
@@ -76,31 +76,31 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param2.is_optional(), false);
   EXPECT_EQ(m2.param2.id(), 1);
   EXPECT_EQ(m2.param2.is_set(), false);
-  EXPECT_EQ(m2.param2.size(), 0);
+  EXPECT_EQ(m2.param2.size(), 1);
   EXPECT_EQ(m2.param2.is_valid(), false);
   EXPECT_EQ(m2.param2.is_fixed_size(), true);
   EXPECT_EQ(m2.param3.is_optional(), false);
   EXPECT_EQ(m2.param3.id(), 2);
   EXPECT_EQ(m2.param3.is_set(), false);
-  EXPECT_EQ(m2.param3.size(), 0);
+  EXPECT_EQ(m2.param3.size(), 2);
   EXPECT_EQ(m2.param3.is_valid(), false);
   EXPECT_EQ(m2.param3.is_fixed_size(), true);
   EXPECT_EQ(m2.param4.is_optional(), true);
   EXPECT_EQ(m2.param4.id(), 3);
   EXPECT_EQ(m2.param4.is_set(), false);
-  EXPECT_EQ(m2.param4.size(), 0);
+  EXPECT_EQ(m2.param4.size(), 4);
   EXPECT_EQ(m2.param4.is_valid(), true);
   EXPECT_EQ(m2.param4.is_fixed_size(), true);
   EXPECT_EQ(m2.param5.is_optional(), true);
   EXPECT_EQ(m2.param5.id(), 12);
   EXPECT_EQ(m2.param5.is_set(), false);
-  EXPECT_EQ(m2.param5.size(), 0);
+  EXPECT_EQ(m2.param5.size(), 1);
   EXPECT_EQ(m2.param5.is_valid(), true);
   EXPECT_EQ(m2.param5.is_fixed_size(), true);
   EXPECT_EQ(m2.param6.is_optional(), true);
   EXPECT_EQ(m2.param6.id(), 13);
   EXPECT_EQ(m2.param6.is_set(), false);
-  EXPECT_EQ(m2.param6.size(), 0);
+  EXPECT_EQ(m2.param6.size(), 1);
   EXPECT_EQ(m2.param6.is_valid(), true);
   EXPECT_EQ(m2.param6.is_fixed_size(), true);
 
@@ -109,7 +109,7 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param1.is_set(), true);
   EXPECT_EQ(m2.param1.is_valid(), true);
   EXPECT_EQ(m2.param1.size(), 0);
-  EXPECT_EQ(m2.size(), 0);
+  EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.is_valid(), false);
 
@@ -119,7 +119,7 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param2.is_valid(), true);
   EXPECT_EQ(m2.param2.size(), 1);
   EXPECT_EQ(m2.param2.get(), 42);
-  EXPECT_EQ(m2.size(), 1);
+  EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.is_valid(), false);
 
@@ -129,7 +129,7 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param3.is_valid(), true);
   EXPECT_EQ(m2.param3.size(), 2);
   EXPECT_EQ(m2.param3.get(), -12345);
-  EXPECT_EQ(m2.size(), 3);
+  EXPECT_EQ(m2.size(), 9);
   m2.param3 = 12; // reassign value
   EXPECT_EQ(m2.param3.get(), 12);
 
@@ -142,7 +142,7 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param4.is_valid(), true);
   EXPECT_EQ(m2.param4.size(), 4);
   EXPECT_EQ(m2.param4.get(), 7654321);
-  EXPECT_EQ(m2.size(), 7);
+  EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
 
@@ -152,7 +152,7 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param5.is_valid(), true);
   EXPECT_EQ(m2.param5.size(), 1);
   EXPECT_EQ(m2.param5.get(), TestEnum1::VALUE2);
-  EXPECT_EQ(m2.size(), 8);
+  EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
   m2.param5 = TestEnum1::VALUE1;

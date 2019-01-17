@@ -16,21 +16,44 @@ extern "C" {
 // --
 // 'Generated' definitions 
 
+// enum TestEnum1 {
+//  VALUE1 = 1,
+//  VALUE2 = 99
+// }
+
 enum class TestEnum1 : mig::enum_t {
   VALUE1 = 1,
   VALUE2 = 99
 };
 
+// group TestGroup1 {
+//  int16 param1 = 0 [optional],
+//  int32 param2 = 1 [optional]
+// }
+
 struct TestGroup1 : ::mig::GroupBase {
-    ::mig::scalar_parameter<std::int16_t> param1{0, ::mig::OPTIONAL};
-    ::mig::scalar_parameter<std::int32_t> param2{1, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<int16_t> param1{0, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<int32_t> param2{1, ::mig::OPTIONAL};
 
     TestGroup1() : ::mig::GroupBase(m_params) {}
     virtual ~TestGroup1() {}
   private:
-    std::map<int, ::mig::parameter&> m_params = { {0, param1}, {1, param2} };
-
+    std::map<int, ::mig::parameter&> m_params = {
+        {0, param1},
+        {1, param2}
+    };
 };
+
+// message TestMessage1002 = 0x1002 {
+//   int8 param1 = 0 [optional],
+//   bool param2 = 1,
+//   bool param3 = 2 [optional],
+//   void param4 = 3,
+//   TestEnum1 param5 = 4,
+//   TestGroup1 param6 = 5,
+//   string param7,
+//   blob param8
+// }
 
 class TestMessage1002 : public ::mig::Message {
 
@@ -38,9 +61,9 @@ class TestMessage1002 : public ::mig::Message {
     TestMessage1002() : ::mig::Message(0x1002, m_params) {}
     virtual ~TestMessage1002() {}
 
-    ::mig::scalar_parameter<std::int8_t> param1{0, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<int8_t> param1{0, ::mig::OPTIONAL};
     ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
-    ::mig::scalar_parameter<std::uint32_t> param3{2, ::mig::OPTIONAL};  
+    ::mig::scalar_parameter<uint32_t> param3{2, ::mig::OPTIONAL};  
     ::mig::scalar_parameter<mig::void_t> param4{3};  
     ::mig::enum_parameter<TestEnum1> param5{4};  
 
@@ -76,8 +99,8 @@ int main() {
   m2.param5 = TestEnum1::VALUE2;
   //std::cout << m2.param7.size() << '\n';
 
-  m2.param6.m_group.param1.set(2);
-  m2.param6.m_group.param2.set(1234567890);
+  m2.param6.data().param1.set(2);
+  m2.param6.data().param2.set(1234567890);
 
   std::string str("Hello World");
 
@@ -172,7 +195,7 @@ int main() {
 
 
   m2.to_wire();
-  m2.hexdump(std::cout);
+  m2.dump(std::cout);
 }
 
 
