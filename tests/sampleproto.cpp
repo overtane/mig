@@ -131,6 +131,7 @@ class SampleProto : public WireFormat {
     int to_wire(const GroupBase&) override;
     int to_wire(const parameter&) override;
  
+    int from_wire(Message&) const override;
     int from_wire(GroupBase&) const override;
     int from_wire(blob_t&) const override;
     int from_wire(std::string&) const override;
@@ -159,6 +160,15 @@ SampleProto::SampleProto(uint8_t *p, size_t n) {
   msgbuf *buf = new msgbuf(p, n);
   set_buf(buf);
   set_size(n);
+  
+  uint16_t id;
+  from_wire(id);
+  set_id(id);
+
+  uint16_t msg_size;
+  from_wire(msg_size);
+  if (msg_size < n)
+    set_size(msg_size);
 }
 
 
@@ -171,7 +181,6 @@ WireFormat *WireFormat::factory(uint8_t *p, size_t n) {
   WireFormat *w = new SampleProto(p, n);
   return w;  
 }
-
 
 size_t SampleProto::wire_size(const Message& msg) const {
   auto s = msg_wire_overhead;
@@ -253,6 +262,12 @@ int SampleProto::to_wire(const GroupBase& group) {
   return 0;
 }
 
+int SampleProto::from_wire(Message& msg) const {
+
+  buf()->reset();
+  buf()->advance(4);
+  return from_wire((GroupBase&)msg);
+}
 
 int SampleProto::from_wire(GroupBase& group) const {
 

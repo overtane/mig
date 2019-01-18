@@ -495,7 +495,7 @@ mig_creat_parameter(const char *type,
 
 static void generate_m_params_vector(FILE *of, struct parameter *pp) 
 {
-  fprintf(of, "    const std::map<int, ::mig::parameter&> m_params = {\n");
+  fprintf(of, "    const ::mig::parameter_container_t m_params = {\n");
   while (pp) {
     fprintf(of, "      {%d, %s},\n", pp->id, pp->name);
     pp = pp->next;
@@ -505,6 +505,8 @@ static void generate_m_params_vector(FILE *of, struct parameter *pp)
 
 static void generate_parameters(FILE *of, struct parameter *pp) 
 {
+  if (pp)
+        fprintf(of, "\n");
   while (pp) {
     union hash_key key = { .name = pp->type };
     struct hash_node *np = hash_table_search(type_table, &key);
@@ -555,6 +557,7 @@ void generate_cpp( struct element *ep, FILE *of)
   time_t t = time(NULL);
   struct tm *tm = localtime(&t);
 
+  struct element *head = ep;
   char *upper = strdup(migpars.in);
   char *c = upper;
 
@@ -585,15 +588,14 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "  public:\n");
         fprintf(of, "    %s() : ::mig::Message(0x%x, m_params) {}\n",
           ep->message.name, ep->message.id);
-        //fprintf(of, "    virtual ~%s() {}\n\n", ep->message.name);
+        fprintf(of, "    static ::mig::Message *create() {  return new %s; }\n", ep->message.name);
         if (pp)
           generate_parameters(of, pp);
-        fprintf(of, "\n");
 
-        fprintf(of, "  private:\n");
+        fprintf(of, "\n  private:\n");
         generate_m_params_vector(of, pp);
 
-        fprintf(of, "};\n\n\n");
+        fprintf(of, "};\n\n");
         break;
     }
         
@@ -603,12 +605,10 @@ void generate_cpp( struct element *ep, FILE *of)
 
         fprintf(of, "  public:\n");
         fprintf(of, "    %s() : ::mig::GroupBase(m_params) {}\n", ep->group.name);
-        //fprintf(of, "    virtual ~%s() {}\n\n", ep->group.name);
         if (pp)
           generate_parameters(of, pp);
-        fprintf(of, "\n");
 
-        fprintf(of, "  private:\n");
+        fprintf(of, "\n  private:\n");
         generate_m_params_vector(of, pp);
 
         fprintf(of, "};\n\n\n");
@@ -628,7 +628,7 @@ void generate_cpp( struct element *ep, FILE *of)
         }
         fprintf(of, "  Count = %d\n", ++value);
 
-        fprintf(of, "};\n\n\n");
+        fprintf(of, "};\n\n");
         break;
     }
         
@@ -638,6 +638,18 @@ void generate_cpp( struct element *ep, FILE *of)
 
     ep = ep->next;
   }
+
+  // creator pointers
+  ep = head;
+  fprintf(of, "\nconst std::map<int, mig::MessageCreatorFunc> mig::Message::creators {\n");
+
+  while (ep) {
+    if  (ep->type == ET_MESSAGE) {
+        fprintf(of, "  { 0x%x, %s::create },\n", ep->message.id, ep->message.name);
+    }
+    ep = ep->next;
+  }
+  fprintf(of, "  };\n\n");
  
   fprintf(of, "#endif // ifndef _%s_H_\n", upper);
 

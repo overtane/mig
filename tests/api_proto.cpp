@@ -38,7 +38,7 @@ struct TestGroup1 : ::mig::GroupBase {
     TestGroup1() : ::mig::GroupBase(m_params) {}
     virtual ~TestGroup1() {}
   private:
-    std::map<int, ::mig::parameter&> m_params = {
+    const ::mig::parameter_container_t  m_params = {
         {0, param1},
         {1, param2}
     };
@@ -55,12 +55,13 @@ struct TestGroup1 : ::mig::GroupBase {
 //   blob param8
 // }
 
+
 class TestMessage1002 : public ::mig::Message {
 
   public:
-    TestMessage1002(::mig::WireFormat *wire_format=nullptr) : 
-      ::mig::Message(0x1002, m_params, wire_format) { std::cout<<"m_params: "<<m_params.size()<<'\n';}
+    TestMessage1002() : ::mig::Message(0x1002, m_params) { }
     virtual ~TestMessage1002() {}
+    static ::mig::Message *create() { return new TestMessage1002(); }
 
     ::mig::scalar_parameter<int8_t> param1{0, ::mig::OPTIONAL};
     ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
@@ -73,7 +74,7 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::var_parameter<mig::blob_t> param8{7};
 
   private:
-    const std::map<int, ::mig::parameter&> m_params = {
+    const ::mig::parameter_container_t m_params = {
       {0, param1},
       {1, param2},
       {2, param3},
@@ -85,10 +86,16 @@ class TestMessage1002 : public ::mig::Message {
   };
 };
 
+const std::map<int, mig::MessageCreatorFunc> mig::Message::creators {
+  {0x1002, TestMessage1002::create}
+};
+
+
 void dump(std::ostream& os, const mig::Message& msg) {
 
   os << "Message "
-     << ((msg.is_valid()) ? "is valid " : "not valid ")
+     << "0x" << std::hex << msg.id()
+     << ((msg.is_valid()) ? " is valid " : "not valid ")
      << "size "
      << std::dec << msg.size()
      << "\n";
@@ -232,25 +239,4 @@ int main() {
   dump(std::cout, *m3);
 }
 
-mig::Message *mig::Message::factory(mig::WireFormat *w) {
 
-  if (w) {
-    mig::Message *m = nullptr;
-
-    uint16_t id, size;
-
-    w->buf()->reset();
-    w->from_wire(id);
-    w->from_wire(size);
-
-    m = new TestMessage1002(w);
-
-    m->from_wire(w);
-
-    return m;
-
-  } else {
-    return nullptr;
-  }
-
-}

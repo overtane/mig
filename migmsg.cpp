@@ -157,4 +157,26 @@ int WireFormat::from_wire(bool& data) const {
   return 0;
 }
 
+
+
+Message *Message::factory(WireFormat *w) {
+
+  Message *m = nullptr;
+
+  if (w) {
+    const auto& it = Message::creators.find(w->id());
+    if (it != Message::creators.end()) {
+      MessageCreatorFunc f = it->second;
+      m = f();
+      if (m) {
+        m->set_wire_format(w);
+        w->from_wire(*m);
+      }
+    }
+  }
+
+  return m;
+}
+
+
 }

@@ -51,6 +51,8 @@ class parameter;
 class GroupBase;
 
 typedef uint8_t enum_t;
+typedef std::map<int, ::mig::parameter&> parameter_container_t;
+typedef Message *(*MessageCreatorFunc)(void);
 
 struct blob_t {
   uint8_t *m_data = nullptr;
@@ -97,12 +99,12 @@ class MsgBuf {
 class WireFormat {
 
   public:
-    virtual ~WireFormat() { if (m_buf) delete m_buf; }
-
     //! instantiate wire formatter from message instance (outgoing)
     static WireFormat *factory(Message&);
     //! instantiate wire formatter from byte buffer (incoming)
     static WireFormat *factory(uint8_t *, size_t);
+
+    virtual ~WireFormat() { if (m_buf) delete m_buf; }
 
     void set_byteorder(ByteOrder w) { this->m_byteorder = w; }
     ByteOrder byteorder() const { return this->m_byteorder; }
@@ -113,6 +115,9 @@ class WireFormat {
     void set_size(size_t size) { this->m_size = size; }
     size_t size() const { return this->m_size; }
 
+    int id() const { return m_id; }
+    void set_id(int id) { m_id = id; }
+
     virtual size_t wire_size(const GroupBase&) const = 0;
     virtual size_t wire_size(const Message&) const = 0;
     virtual size_t wire_size(const parameter&) const = 0;
@@ -121,6 +126,7 @@ class WireFormat {
     virtual int to_wire(const GroupBase&) = 0;
     virtual int to_wire(const parameter&) = 0;
 
+    virtual int from_wire(Message&) const = 0;
     virtual int from_wire(GroupBase&) const = 0;
 
     virtual int to_wire(int8_t);
@@ -150,10 +156,14 @@ class WireFormat {
     virtual void dump(std::ostream&, const Message&) const = 0;
     virtual void dump(std::ostream&, const GroupBase&, int) const = 0;
 
+  protected:
+    WireFormat() {}
+
   private:
     MsgBuf *m_buf; //!< Buffer area
     size_t m_size; //!< Size of wire formatted message in bytes
-
+    int m_id; //!< Id of the message in m_buf
+ 
     ByteOrder m_byteorder = ByteOrder::Network;
 };
 
@@ -194,11 +204,10 @@ class GroupBase {
 
   public:
     GroupBase() = delete;
-    GroupBase(const std::map<int, ::mig::parameter&>& params) : m_params(params)  {}
     virtual ~GroupBase() {}
 
     int nparams() { return this->m_params.size(); } 
-    const std::map<int, ::mig::parameter&>& params() const { return this->m_params; }
+    const parameter_container_t& params() const { return this->m_params; }
     bool is_valid() const {
         for (auto& it : this->m_params) if (!it.second.is_valid()) return false;
         return true;
@@ -212,38 +221,49 @@ class GroupBase {
     size_t wire_size(const WireFormat& w) const { return w.wire_size(*this); }
     int from_wire(const WireFormat *w) { return w->from_wire(*this); }
 
+  protected:
+    GroupBase(const parameter_container_t& params) : m_params(params)  {}
+
   private:
-    const std::map<int, ::mig::parameter&>& m_params; // this is a reference to the actual map
+    const parameter_container_t& m_params; // this is a reference to the actual map
 };
 
 
 class Message : public GroupBase {
 
   public:
+    //! Instantiate messages from incoming byte stream
     static Message* factory(WireFormat *);
 
-    Message(int id, const std::map<int, ::mig::parameter&>& m_params, WireFormat *wire_format=nullptr) : 
-        GroupBase(m_params), m_id(id), m_wire_format(wire_format) {}
-
+    Message() = delete;
     ~Message() { if (m_wire_format) delete m_wire_format; }
 
     int id() const { return this->m_id; }
 
+    void set_wire_format(WireFormat *wire_format)  { m_wire_format = wire_format; }
+    WireFormat* wire_format() const { return m_wire_format; }
     const WireFormat *to_wire() {
       if (m_wire_format)
         delete m_wire_format;
       m_wire_format = WireFormat::factory(*this);
       return m_wire_format;
     }
-    WireFormat* wire_format() const { return m_wire_format; }
 
     void dump(std::ostream& os) const {
       if (this->wire_format())
         this->wire_format()->dump(os, *this);
     }
+
+  protected:
+    Message(int id, const parameter_container_t& m_params) : 
+      GroupBase(m_params), m_id(id) {}
+
   private:
     const int m_id;
-    WireFormat *m_wire_format;
+    WireFormat *m_wire_format = nullptr;
+
+    static const std::map<int, MessageCreatorFunc> creators;
+
 };
 
 template <class T>
