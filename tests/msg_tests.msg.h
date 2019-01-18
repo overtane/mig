@@ -2,7 +2,7 @@
 //  This is an automatically generated file
 //  Please do not edit
 //  Source:  msg_tests.msg
-//  Thu Jan 17 13:16:23 2019
+//  Fri Jan 18 10:45:01 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -22,7 +22,7 @@ class TestMessage1001 : public ::mig::Message {
     TestMessage1001() : ::mig::Message(0x1001, m_params) {}
 
   private:
-    std::map<int, ::mig::parameter&> m_params = {
+    const std::map<int, ::mig::parameter&> m_params = {
     };
 };
 
@@ -35,7 +35,7 @@ struct TestGroup1 : ::mig::GroupBase {
     ::mig::scalar_parameter<uint32_t> param2{9};
 
   private:
-    std::map<int, ::mig::parameter&> m_params = {
+    const std::map<int, ::mig::parameter&> m_params = {
       {0, param1},
       {9, param2},
     };
@@ -54,7 +54,7 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::scalar_parameter<bool> param6{13, ::mig::OPTIONAL};
 
   private:
-    std::map<int, ::mig::parameter&> m_params = {
+    const std::map<int, ::mig::parameter&> m_params = {
       {0, param1},
       {1, param2},
       {2, param3},
@@ -76,7 +76,7 @@ class TestMessage1003 : public ::mig::Message {
     ::mig::scalar_parameter<uint8_t> param5{5};
 
   private:
-    std::map<int, ::mig::parameter&> m_params = {
+    const std::map<int, ::mig::parameter&> m_params = {
       {2, param1},
       {4, param2},
       {6, param3},

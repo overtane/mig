@@ -51,7 +51,16 @@ class parameter;
 class GroupBase;
 
 typedef uint8_t enum_t;
-typedef std::vector<uint8_t> blob_t; 
+
+struct blob_t {
+  uint8_t *m_data = nullptr;
+  size_t m_size = 0;
+  
+  uint8_t *data() const { return m_data; }
+  size_t size() const { return m_size; }
+  void assign(uint8_t *p, int n) { m_data = p, m_size = n; }
+};
+
 struct void_t {};
 
 //! Interface class for wire format message buffer
@@ -66,17 +75,19 @@ class MsgBuf {
     virtual uint8_t *set_buf(uint8_t *buf, size_t n) = 0;
     
     //! put one byte and advance buffer pointer by 1
-    virtual int put(uint8_t c) = 0;
+    virtual int putc(uint8_t c) = 0;
     //! put array of bytes and advance buffer pointer by n
-    virtual int put(const uint8_t *p, size_t n) = 0;
+    virtual int putp(const uint8_t *p, size_t n) = 0;
     //! get one byte and advance buffer pointer by 1
     virtual uint8_t getc() = 0;
+    //! get pointer to buffer data if available
+    virtual uint8_t *getp(size_t) const = 0;
     //! reset buffer pointer to the start of buffer
     virtual void reset() = 0; //
-    //! get pointer to buffer data
-    virtual uint8_t *getp() const = 0;
     //! advance buffer pointer
-    virtual void advance(size_t) = 0;
+    virtual size_t advance(size_t) = 0;
+    //! get internal buffer size
+    virtual size_t size() const = 0;
 
     //! hexdump buffer contents to stream
     virtual void hexdump(std::ostream&) const = 0;
@@ -88,8 +99,10 @@ class WireFormat {
   public:
     virtual ~WireFormat() { if (m_buf) delete m_buf; }
 
-    //! instantiate the actual wire formatter
+    //! instantiate wire formatter from message instance (outgoing)
     static WireFormat *factory(Message&);
+    //! instantiate wire formatter from byte buffer (incoming)
+    static WireFormat *factory(uint8_t *, size_t);
 
     void set_byteorder(ByteOrder w) { this->m_byteorder = w; }
     ByteOrder byteorder() const { return this->m_byteorder; }
@@ -100,13 +113,15 @@ class WireFormat {
     void set_size(size_t size) { this->m_size = size; }
     size_t size() const { return this->m_size; }
 
-    virtual size_t wire_size(const GroupBase&) = 0;
-    virtual size_t wire_size(const Message&) = 0;
-    virtual size_t wire_size(const parameter&) = 0;
+    virtual size_t wire_size(const GroupBase&) const = 0;
+    virtual size_t wire_size(const Message&) const = 0;
+    virtual size_t wire_size(const parameter&) const = 0;
  
     virtual int to_wire(const Message&) = 0;
     virtual int to_wire(const GroupBase&) = 0;
     virtual int to_wire(const parameter&) = 0;
+
+    virtual int from_wire(GroupBase&) const = 0;
 
     virtual int to_wire(int8_t);
     virtual int to_wire(int16_t);
@@ -128,6 +143,9 @@ class WireFormat {
     virtual int from_wire(uint16_t&) const;
     virtual int from_wire(uint32_t&) const;
     virtual int from_wire(uint64_t&) const;
+    virtual int from_wire(bool&) const;
+    virtual int from_wire(blob_t&) const = 0;
+    virtual int from_wire(std::string&) const = 0;
 
     virtual void dump(std::ostream&, const Message&) const = 0;
     virtual void dump(std::ostream&, const GroupBase&, int) const = 0;
@@ -147,8 +165,7 @@ class parameter {
         m_id(id),
         m_is_optional(is_optional),
         m_is_scalar(is_scalar),
-        m_group(group)
-    {}
+        m_group(group) {}
     virtual ~parameter() {}
 
     void set() { this->m_is_set = true; }
@@ -160,10 +177,9 @@ class parameter {
     virtual bool is_set() const { return this->m_is_set; }
     virtual std::size_t size() const = 0;
     virtual bool is_valid() const { return this->is_set() || this->is_optional(); }
-    virtual void data_to_wire(WireFormat&) const = 0;
-    virtual size_t wire_size(WireFormat& w) const { (void)w; return this->size(); };
-
-    GroupBase* g_group = nullptr;
+    virtual int data_to_wire(WireFormat&) const = 0;
+    virtual size_t wire_size(const WireFormat& w) const { (void)w; return this->size(); };
+    virtual int data_from_wire(const WireFormat&) = 0;
 
   private:
     const int m_id;
@@ -178,11 +194,11 @@ class GroupBase {
 
   public:
     GroupBase() = delete;
-    GroupBase(std::map<int, ::mig::parameter&>& params) : m_params(params)  {}
+    GroupBase(const std::map<int, ::mig::parameter&>& params) : m_params(params)  {}
     virtual ~GroupBase() {}
 
     int nparams() { return this->m_params.size(); } 
-    std::map<int, ::mig::parameter&>& params() const { return this->m_params; }
+    const std::map<int, ::mig::parameter&>& params() const { return this->m_params; }
     bool is_valid() const {
         for (auto& it : this->m_params) if (!it.second.is_valid()) return false;
         return true;
@@ -193,20 +209,22 @@ class GroupBase {
         return s;
     } 
     bool is_set() const { return this->is_valid(); } // group is set if it is valid
-    size_t wire_size(WireFormat& w) const { return w.wire_size(*this); }
+    size_t wire_size(const WireFormat& w) const { return w.wire_size(*this); }
+    int from_wire(const WireFormat *w) { return w->from_wire(*this); }
 
   private:
-    std::map<int, ::mig::parameter&>& m_params; // this is a reference to the actual mapr
+    const std::map<int, ::mig::parameter&>& m_params; // this is a reference to the actual map
 };
 
 
 class Message : public GroupBase {
 
   public:
-    static Message* factory();
+    static Message* factory(WireFormat *);
 
-    Message(int id, std::map<int, ::mig::parameter&>& m_params) : 
-        GroupBase(m_params), m_id(id) {}
+    Message(int id, const std::map<int, ::mig::parameter&>& m_params, WireFormat *wire_format=nullptr) : 
+        GroupBase(m_params), m_id(id), m_wire_format(wire_format) {}
+
     ~Message() { if (m_wire_format) delete m_wire_format; }
 
     int id() const { return this->m_id; }
@@ -225,7 +243,7 @@ class Message : public GroupBase {
     }
   private:
     const int m_id;
-    WireFormat *m_wire_format = nullptr;
+    WireFormat *m_wire_format;
 };
 
 template <class T>
@@ -239,7 +257,11 @@ class scalar_parameter : public parameter {
     T get() const { return this->m_data; }
 
     std::size_t size() const override { return sizeof(T); }
-    void data_to_wire(WireFormat& w) const override { w.to_wire(m_data); }
+    int data_to_wire(WireFormat& w) const override { return w.to_wire(m_data); }
+    int data_from_wire(const WireFormat& w) override { 
+      parameter::set(); 
+      return w.from_wire(m_data); 
+    }
 
   private:
     T m_data = T(0);
@@ -254,7 +276,8 @@ class scalar_parameter <void_t> : public parameter {
     bool get() const { return this->is_set(); }
 
     std::size_t size() const override { return 0; }
-    void data_to_wire(WireFormat& w) const override { (void)w; } // parameter has no value
+    int data_to_wire(WireFormat& w) const override { (void)w; return 0; }
+    int data_from_wire(const WireFormat& w) override { (void)w; parameter::set(); return 0; }
 };
 
 template <class T>
@@ -268,7 +291,14 @@ class enum_parameter : public parameter {
     T get() const { return this->m_data; }
 
     std::size_t size() const override { return sizeof(mig::enum_t); }
-    void data_to_wire(WireFormat& w) const override { w.to_wire((enum_t)m_data); }
+    int data_to_wire(WireFormat& w) const override { return w.to_wire((enum_t)m_data); }
+    int data_from_wire(const WireFormat& w) override {
+      uint8_t x;
+      w.from_wire(x);
+      m_data = static_cast<T>(x);
+      parameter::set();
+      return 0;
+    }
 
   private:
     T m_data = T(0);
@@ -288,8 +318,9 @@ class group_parameter : public parameter {
     bool is_set() const override { return this->m_data.is_set(); }
     std::size_t size() const override { return this->m_data.size(); }
     bool is_valid() const override { return (this->m_data.is_valid() || this->is_optional()); }
-    size_t wire_size(WireFormat& w) const override { return this->m_data.wire_size(w); }
-    void data_to_wire(WireFormat& w) const override { w.to_wire((const GroupBase&)(m_data)); }
+    size_t wire_size(const WireFormat& w) const override { return this->m_data.wire_size(w); }
+    int data_to_wire(WireFormat& w) const override { return w.to_wire((const GroupBase&)(m_data)); }
+    int data_from_wire(const WireFormat& w) override { return w.from_wire((GroupBase&)(m_data)); }
 
   private:
     T m_data;
@@ -301,21 +332,24 @@ class var_parameter : public parameter {
 
   public:
     var_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
-    virtual ~var_parameter() { if (m_data) delete m_data; } 
+    virtual ~var_parameter() { /* TODO how to cleanup data */ } 
 
-    void set(T* data) {
-        if (this->m_data)
-          delete m_data;
-        this->m_data = data;
+    void set(T& data) {
+        this->m_data.m_data = data.data();
+        this->m_data.m_size = data.size();
         this->parameter::set();
     }
-    T* get() { return this->m_data; }
+    T* get() { return this->m_data.data(); }
 
-    std::size_t size() const override { return this->m_data->size(); }
-    void data_to_wire(WireFormat& w) const override { w.to_wire(*m_data); }
+    std::size_t size() const override { return this->m_data.size(); }
+    int data_to_wire(WireFormat& w) const override { return w.to_wire(m_data); }
+    int data_from_wire(const WireFormat& w) override { 
+      parameter::set();
+      return w.from_wire(m_data); 
+    }
 
   private:
-    T* m_data = nullptr;
+    T m_data;
 
 };
 
@@ -330,14 +364,19 @@ class var_parameter <std::string>: public parameter
     void set(std::string data) { this->m_data = data; this->parameter::set(); }
     std::string& get() { return this->m_data; }
 
+    void set_data(std::string data) { this->m_data = data; this->parameter::set(); }
+    std::string& data() { return this->m_data; }
+
     std::size_t size() const override { return this->m_data.size()+1; }
-    void data_to_wire(WireFormat& w) const override { w.to_wire(m_data); }
+    int data_to_wire(WireFormat& w) const override { return w.to_wire(m_data); }
+    int data_from_wire(const WireFormat& w) override {
+      parameter::set(); 
+      return w.from_wire(m_data);
+    }
 
   private:
     std::string m_data;
 };
-
-
 
 // TODO repeated parameters
 

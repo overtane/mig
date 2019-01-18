@@ -39,65 +39,76 @@ class msgbuf : public MsgBuf {
   
   public:
     msgbuf(size_t n) { alloc_buf(n); }
-    ~msgbuf() { if (data) delete[] data; }
+    msgbuf(uint8_t *p, size_t n) { set_buf(p, n); }
+    ~msgbuf() { /*if (m_data) delete[] m_data;*/ } // TODO manage allocation
     
     uint8_t *alloc_buf(size_t n) override {
-      if (data)
-        delete[] data;
-      data = new uint8_t[n];
-      size = n;
-      return data;
+      if (m_data)
+        delete[] m_data;
+      m_data = new uint8_t[n];
+      m_size = n;
+      m_next = 0;
+      return m_data;
     }
-    uint8_t *set_buf(uint8_t *buf, size_t n) override 
-      { data = buf; size = n; return data; }
+    uint8_t *set_buf(uint8_t *p, size_t n) override 
+      { m_data = p; m_size = n; m_next=0; return m_data; }
     
-    int put(uint8_t c) override { 
-      if (data && next < size ) {
-        data[next] = c;
-        next++;
+    int putc(uint8_t c) override {
+      if (m_data && m_next < m_size ) {
+        m_data[m_next] = c;
+        m_next++;
         return 0;
       }
       return -1;
     }
     
-    int put(const uint8_t *p, size_t n) override { 
-      while (next < size && n-- && data) { // TODO optimize!!
-        data[next++] = *p++;
+    int putp(const uint8_t *p, size_t n) override { 
+      while (m_next < m_size && n-- && m_data) { 
+        // TODO this is bytewise assignment - OPTIMIZE!!!
+        m_data[m_next++] = *p++;
       }
       return (n)? -1 : 0;
     }
 
     uint8_t getc() override {
-      if (data && next < size ) {
-        uint8_t c = data[next];
-        next++;
+      if (m_data && m_next < m_size ) {
+        uint8_t c = m_data[m_next];
+        m_next++;
         return c;
       }
       return 0xff;
     }
     
-    void reset() override { this->next = 0; }
-  
-    uint8_t *getp() const override {
-        if (this->next < this->size)
-          return &this->data[this->next];
+    uint8_t *getp(size_t n) const override {
+        if (m_next + n - 1 < m_size)
+          return &m_data[m_next];
         return nullptr;
     }
 
-    void advance(size_t n) override { this->next += n; }
+    size_t advance(size_t n) override { 
+        if (m_next + n - 1 <  m_size) {
+          m_next += n;
+          return m_next;
+        }
+        return 0;
+    }
+
+    void reset() override { m_next = 0; }
+  
+    size_t size() const override { return m_size; }
 
     void hexdump(std::ostream& os) const override {
       os << std::setfill('0');
-      for (auto i=0; i < this->size; i++)
-        os << std::hex << std::setw(2) << int(this->data[i]) << ' ';
+      for (auto i=0; i < m_size; i++)
+        os << std::hex << std::setw(2) << int(m_data[i]) << ' ';
       os << '\n';
     }
 
   private:
     
-    uint8_t *data = nullptr;
-    size_t size = 0;
-    int next = 0;
+    uint8_t *m_data = nullptr;
+    size_t m_size = 0;
+    int m_next = 0;
 };
 
 
@@ -106,20 +117,26 @@ class SampleProto : public WireFormat {
 
   public:
     SampleProto(Message& msg);
+    SampleProto(uint8_t *buf, size_t n);
     ~SampleProto() {}    
 
     static const int par_wire_overhead = 1;
     static const int msg_wire_overhead = 5;
 
-    size_t wire_size(const GroupBase&) override;
-    size_t wire_size(const Message&) override;
-    size_t wire_size(const parameter&) override;
+    size_t wire_size(const GroupBase&) const override;
+    size_t wire_size(const Message&) const override;
+    size_t wire_size(const parameter&) const override;
  
     int to_wire(const Message&) override;
     int to_wire(const GroupBase&) override;
     int to_wire(const parameter&) override;
  
+    int from_wire(GroupBase&) const override;
+    int from_wire(blob_t&) const override;
+    int from_wire(std::string&) const override;
+
     using WireFormat::to_wire;
+    using WireFormat::from_wire;
 
     void dump(std::ostream&, const Message&) const override;
     void dump(std::ostream&, const GroupBase&, int) const override;
@@ -137,28 +154,40 @@ SampleProto::SampleProto(Message& msg) {
   to_wire(msg);
 }
 
+SampleProto::SampleProto(uint8_t *p, size_t n) {
+
+  msgbuf *buf = new msgbuf(p, n);
+  set_buf(buf);
+  set_size(n);
+}
+
+
 WireFormat* WireFormat::factory(Message& msg) {
   WireFormat *w = new SampleProto(msg);
   return w;
 }
 
-size_t SampleProto::wire_size(const Message& msg) {
+WireFormat *WireFormat::factory(uint8_t *p, size_t n) {
+  WireFormat *w = new SampleProto(p, n);
+  return w;  
+}
+
+
+size_t SampleProto::wire_size(const Message& msg) const {
   auto s = msg_wire_overhead;
   for (auto& it : msg.params())
     s += wire_size(it.second);
-
-  std::cout << s << '\n';
   return s;
 }
 
-size_t SampleProto::wire_size(const GroupBase& group) {
+size_t SampleProto::wire_size(const GroupBase& group) const {
   auto s = 1;
   for (auto& it : group.params())
     s += wire_size(it.second);
   return s;
 }
 
-size_t SampleProto::wire_size(const parameter& par) {
+size_t SampleProto::wire_size(const parameter& par) const {
 
 // if parameter is fixed size, wire size is derived from data type
 // for variable size parameters, data size is given before data
@@ -168,7 +197,6 @@ size_t SampleProto::wire_size(const parameter& par) {
     if  (!par.is_scalar() && !par.group())
       s += 2; // data size
     s += par.wire_size(*this); // data
-    std::cout << par.id() << ": " << s << '\n';
     return s;
   }
   return 0;
@@ -176,13 +204,13 @@ size_t SampleProto::wire_size(const parameter& par) {
 
 int SampleProto::to_wire(const Message& msg) {
 
-  std::cout << "msg: " << std::hex << msg.id() << '\n';
+//  std::cout << "msg: " << std::hex << msg.id() << '\n';
  
 // Message: | header | parameters | 0xFF
 // Header:  | Msg id | Msg size |
 
   to_wire((uint16_t)msg.id());
-  to_wire((uint16_t)this->size()); // wire format size 
+  to_wire((uint16_t)size()); // wire format size 
 
   for (auto& it : msg.params())
     to_wire(it.second); // serialize each parameter
@@ -200,7 +228,7 @@ int SampleProto::to_wire(const parameter& par) {
 // fixed size parameter:    | par id | data
 // variable size parameter: | par id | size | data
 
-  std::cout << "par: " << par.id() << '\n';
+//  std::cout << "par: " << par.id() << '\n';
   if (par.is_set()) {
     to_wire((uint8_t)par.id());
     if  (!par.is_scalar() && !par.group())
@@ -215,13 +243,62 @@ int SampleProto::to_wire(const GroupBase& group) {
 // group parameter: | par id | group | 0xFF
 // group          : | par 1 | par 2 | ...
 
-  std::cout << "group" << '\n';
+//  std::cout << "group" << '\n';
 
   for (auto& it : group.params())
     to_wire(it.second); // serialize each parameter
  
   to_wire((uint8_t)0xFF); // end of message 
-  std::cout << "end group" << '\n';
+//  std::cout << "end group" << '\n';
+  return 0;
+}
+
+
+int SampleProto::from_wire(GroupBase& group) const {
+
+  std::cout << "group\n"; 
+  int ret = 0;
+  uint8_t c;
+
+  while ( (c = buf()->getc()) != 0xff) {
+
+    std::cout << "trying parameter " << std::dec << int(c) << "\n"; 
+    if (group.params().count(int(c)) > 0) { // valid param id
+      std::cout << "parsing parameter " << std::dec << int(c) << "\n"; 
+      parameter& par = group.params().at(c);
+      ret -= par.data_from_wire(*this);
+
+    } else 
+
+      ret -= 1; // non-valid param id
+  }
+
+  std::cout << "group done" << "\n"; 
+  return ret;
+}
+
+int SampleProto::from_wire(blob_t& data) const {
+  std::cout << "blob" << "\n"; 
+  uint16_t n;
+  from_wire(n);
+  std::cout << "blob 2 " << n << "\n"; 
+  uint8_t *p = buf()->getp(n);
+  std::cout << "blob 3 " << "\n"; 
+  data.assign(p, n);
+  std::cout << "blob 4 " << "\n"; 
+  buf()->advance(n);
+  std::cout << "blob done" << "\n"; 
+  return 0;
+}
+
+int SampleProto::from_wire(std::string& data) const {
+  uint16_t n;
+  from_wire(n);
+  const char *p = (const char *)buf()->getp(n);
+  // TODO this makes a copy
+  // if we want to reuse buffer area for data, string class has to be replaced
+  data.assign(p, n-1);
+  buf()->advance(n);
   return 0;
 }
 
@@ -248,22 +325,22 @@ void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
 void SampleProto::dump(std::ostream& os, const GroupBase& group, int id) const {
 
   uint16_t size;
-
   uint8_t c;
+
   while ( (c = buf()->getc()) != 0xff) {
     if (group.params().count(c) > 0) {
       parameter& par = group.params().at(c);
 
       if (dynamic_cast<const Message*>(&group))
         // direct parameter
-        os << "- Parameter: " << std::dec  << int(c) << ": ";
+        os << "- param " << std::dec  << int(c) << ": ";
       else
         // group parameter
-        os << "  Group " << std::dec << id << ": ";
+        os << "  group " << std::dec << id << '/' << int(c) << ": ";
 
       if (par.is_scalar()) {
         size = par.size(); 
-        uint8_t *p = buf()->getp(); // TODO getp(size);
+        uint8_t *p = buf()->getp(size);
         os << std::setfill('0');
         for (auto i=0; i < size; i++, p++)
           os << std::hex << std::setw(2) << int(*p) << ' ';
@@ -272,10 +349,9 @@ void SampleProto::dump(std::ostream& os, const GroupBase& group, int id) const {
       } else if (par.group()) {
         os << '\n';
         dump(os, *par.group(), c);
-        os << "- end group " << std::dec << int(c) << '\n';
       } else {
         from_wire(size);
-        uint8_t *p = buf()->getp(); // TODO getp(size);
+        uint8_t *p = buf()->getp(size);
         for (auto i=0; i < size; i++, p++)
           os << std::hex << std::setw(2) << int(*p) << ' ';
         os << '\n';
@@ -298,9 +374,10 @@ void SampleProto::dump(std::ostream& os, const Message& msg) const {
 
   os << std::setfill('0');
   os << "Message: 0x" << std::hex << std::setw(4) << id;
-  os << std::dec << ", length " << size << '\n';
+  os << std::dec << ", length " << size << '(' << msg.size() << ")\n";
 
   dump(os, dynamic_cast<const GroupBase&>(msg), msg.id());
 }
+
 
 } // namespace mig

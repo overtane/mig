@@ -31,14 +31,14 @@ namespace mig {
 
 int WireFormat::to_wire(uint8_t value) {
 
-  return buf()->put(value);
+  return buf()->putc(value);
 }
 
 int WireFormat::to_wire(uint16_t value) {
 
   if (byteorder() == ByteOrder::Network) {
     value = htons(value);
-    return buf()->put((uint8_t *)&value, 2);
+    return buf()->putp((uint8_t *)&value, 2);
   } else {
     // TODO implement
     return -1;
@@ -49,7 +49,7 @@ int WireFormat::to_wire(uint32_t value) {
 
   if (byteorder() == ByteOrder::Network) {
     value = htonl(value);
-    return buf()->put((uint8_t *)&value, 4);
+    return buf()->putp((uint8_t *)&value, 4);
   } else {
     // TODO implement
     return -1;
@@ -69,7 +69,7 @@ int WireFormat::to_wire(uint64_t value) {
     v1.i64 = value;
     v2.i32[1] = htonl(v1.i32[0]);
     v2.i32[0] = htonl(v2.i32[1]);
-    return buf()->put((uint8_t *)&v2, 8);
+    return buf()->putp((uint8_t *)&v2, 8);
   } else {
     // TODO implement
     return -1;
@@ -77,11 +77,11 @@ int WireFormat::to_wire(uint64_t value) {
 }
 
 int WireFormat::to_wire(const std::string& value) {
-    return buf()->put((uint8_t *)value.c_str(), value.size()+1);
+    return buf()->putp((uint8_t *)value.c_str(), value.size()+1);
 }
 
 int WireFormat::to_wire(const blob_t& value) {
-  return buf()->put((uint8_t *)value.data(), value.size());
+  return buf()->putp((uint8_t *)value.data(), value.size());
 }
 
 int WireFormat::to_wire(bool value) {
@@ -112,13 +112,13 @@ int WireFormat::from_wire(int8_t& data) const {
 }
 
 int WireFormat::from_wire(int16_t& data) const {
-  data = (int16_t)ntohs(*(uint16_t*)(buf()->getp()));
+  data = (int16_t)ntohs(*(uint16_t*)(buf()->getp(2)));
   buf()->advance(2);
   return 0;
 }
 
 int WireFormat::from_wire(int32_t& data) const {
-  data = (int32_t)ntohl(*(uint32_t*)(buf()->getp()));
+  data = (int32_t)ntohl(*(uint32_t*)(buf()->getp(4)));
   buf()->advance(4);
   return 0;
 }
@@ -135,13 +135,13 @@ int WireFormat::from_wire(uint8_t& data) const {
 }
 
 int WireFormat::from_wire(uint16_t& data) const {
-  data = ntohs(*(uint16_t*)(buf()->getp()));
+  data = ntohs(*(uint16_t*)(buf()->getp(2)));
   buf()->advance(2);
   return 0;
 }
 
 int WireFormat::from_wire(uint32_t& data) const {
-  data = ntohs(*(uint32_t*)(buf()->getp()));
+  data = ntohs(*(uint32_t*)(buf()->getp(4)));
   buf()->advance(4);
   return 0;
 }
@@ -152,6 +152,9 @@ int WireFormat::from_wire(uint64_t& data) const {
   return 0;
 }
 
-
+int WireFormat::from_wire(bool& data) const {
+  data = buf()->getc();
+  return 0;
+}
 
 }
