@@ -63,7 +63,7 @@ class TestMessage1002 : public ::mig::Message {
     virtual ~TestMessage1002() {}
     static ::mig::MessagePtr create() { return std::make_unique<TestMessage1002>(); }
 
-    ::mig::scalar_parameter<int8_t> param1{0, ::mig::OPTIONAL};
+    ::mig::scalar_parameter<int8_t> param1{8, ::mig::OPTIONAL};
     ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
     ::mig::scalar_parameter<uint32_t> param3{2, ::mig::OPTIONAL};  
     ::mig::scalar_parameter<mig::void_t> param4{3};  
@@ -71,18 +71,18 @@ class TestMessage1002 : public ::mig::Message {
 
     ::mig::group_parameter<TestGroup1> param6{5};
     ::mig::var_parameter<std::string> param7{6};
-    ::mig::var_parameter<mig::blob_t> param8{7};
+    ::mig::var_parameter<mig::blob_t> param8{0};
 
   private:
     const ::mig::parameter_container_t m_params = {
-      {0, param1},
       {1, param2},
       {2, param3},
       {3, param4},
       {4, param5},
       {5, param6},
       {6, param7},
-      {7, param8}
+      {0, param8},
+      {8, param1}
   };
 };
 
@@ -228,13 +228,14 @@ int main() {
   m2.to_wire();
   m2.dump(std::cout);
 
-  size_t n = m2.wire_format()->buf()->size();
-
-  uint8_t *p = new uint8_t[n];
+  auto n = m2.wire_format()->buf()->size();
+  auto p = std::make_unique<uint8_t[]>(n);
   m2.wire_format()->buf()->reset();
-  memcpy(p,  m2.wire_format()->buf()->getp(n), n);
+  memcpy(p.get(),  m2.wire_format()->buf()->getp(n), n);
 
-  mig::MessagePtr m3 = mig::Message::factory(mig::WireFormat::factory(p,n));
+  auto w = mig::WireFormat::factory(p,n);
+
+  auto m3 = mig::Message::factory(w);
   if (m3) m3->dump(std::cout);
   dump(std::cout, *m3);
 }

@@ -50,10 +50,16 @@ enum class ByteOrder {
 class Message;
 class parameter;
 class GroupBase;
+class WireFormat;
+class MsgBuf;
 
 typedef uint8_t enum_t;
 typedef std::map<int, ::mig::parameter&> parameter_container_t;
 typedef std::unique_ptr<Message> MessagePtr;
+typedef std::unique_ptr<WireFormat> WireFormatPtr;
+typedef std::unique_ptr<MsgBuf> MsgBufPtr;
+typedef std::unique_ptr<uint8_t []> StoragePtr; // for dynamic storage areas
+
 typedef MessagePtr (*MessageCreatorFunc)(void);
 
 struct blob_t {
@@ -74,9 +80,9 @@ class MsgBuf {
     virtual ~MsgBuf() { }
    
     //! allocate/reallocate buffer. reallocation deletes the previous 
-    virtual uint8_t *alloc_buf(size_t n) = 0;
-    //! set buffer and override the previous 
-    virtual uint8_t *set_buf(uint8_t *buf, size_t n) = 0;
+    virtual int alloc_buf(size_t n) = 0;
+    //! assign new storage buffer overriding the previous 
+    virtual int set_buf(StoragePtr& buf, size_t n) = 0;
     
     //! put one byte and advance buffer pointer by 1
     virtual int putc(uint8_t c) = 0;
@@ -102,17 +108,17 @@ class WireFormat {
 
   public:
     //! instantiate wire formatter from message instance (outgoing)
-    static WireFormat *factory(Message&);
+    static WireFormatPtr factory(Message&);
     //! instantiate wire formatter from byte buffer (incoming)
-    static WireFormat *factory(uint8_t *, size_t);
+    static WireFormatPtr factory(StoragePtr&, size_t);
 
-    virtual ~WireFormat() { if (m_buf) delete m_buf; }
+    virtual ~WireFormat() { }
 
     void set_byteorder(ByteOrder w) { this->m_byteorder = w; }
     ByteOrder byteorder() const { return this->m_byteorder; }
 
-    void set_buf(MsgBuf *buf) { this->m_buf = buf; }
-    MsgBuf *buf() const { return this->m_buf; }
+    void set_buf(MsgBufPtr& buf) { this->m_buf = std::move(buf); }
+    MsgBuf *buf() const { return this->m_buf.get(); }
 
     void set_size(size_t size) { this->m_size = size; }
     size_t size() const { return this->m_size; }
@@ -162,7 +168,7 @@ class WireFormat {
     WireFormat() {}
 
   private:
-    MsgBuf *m_buf; //!< Buffer area
+    MsgBufPtr m_buf; //!< Buffer area
     size_t m_size; //!< Size of wire formatted message in bytes
     int m_id; //!< Id of the message in m_buf
  
@@ -221,7 +227,7 @@ class GroupBase {
     } 
     bool is_set() const { return this->is_valid(); } // group is set if it is valid
     size_t wire_size(const WireFormat& w) const { return w.wire_size(*this); }
-    int from_wire(const WireFormat *w) { return w->from_wire(*this); }
+    int from_wire(const WireFormat& w) { return w.from_wire(*this); }
 
   protected:
     GroupBase(const parameter_container_t& params) : m_params(params)  {}
@@ -235,20 +241,19 @@ class Message : public GroupBase {
 
   public:
     //! Instantiate messages from incoming byte stream
-    static MessagePtr factory(WireFormat *);
+    static MessagePtr factory(WireFormatPtr&);
 
     Message() = delete;
-    ~Message() { if (m_wire_format) delete m_wire_format; }
+    ~Message() {}
 
     int id() const { return this->m_id; }
 
-    void set_wire_format(WireFormat *wire_format)  { m_wire_format = wire_format; }
-    WireFormat* wire_format() const { return m_wire_format; }
-    const WireFormat *to_wire() {
-      if (m_wire_format)
-        delete m_wire_format;
+    void set_wire_format(WireFormatPtr& wire_format)  { m_wire_format = std::move(wire_format); }
+    WireFormat* wire_format() const { return m_wire_format.get(); }
+    int to_wire() {
       m_wire_format = WireFormat::factory(*this);
-      return m_wire_format;
+      // TODO return value based on success
+      return 0;
     }
 
     void dump(std::ostream& os) const {
@@ -262,7 +267,7 @@ class Message : public GroupBase {
 
   private:
     const int m_id;
-    WireFormat *m_wire_format = nullptr;
+    WireFormatPtr m_wire_format = nullptr;
 
     static const std::map<int, MessageCreatorFunc> creators;
 

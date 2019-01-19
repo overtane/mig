@@ -39,23 +39,21 @@ class msgbuf : public MsgBuf {
   
   public:
     msgbuf(size_t n) { alloc_buf(n); }
-    msgbuf(uint8_t *p, size_t n) { set_buf(p, n); }
-    ~msgbuf() { /*if (m_data) delete[] m_data;*/ } // TODO manage allocation
+    msgbuf(StoragePtr& p, size_t n) { set_buf(p, n); }
+    ~msgbuf() {}
     
-    uint8_t *alloc_buf(size_t n) override {
-      if (m_data)
-        delete[] m_data;
-      m_data = new uint8_t[n];
+    int alloc_buf(size_t n) override {
+      m_data = std::make_unique<uint8_t []>(n);
       m_size = n;
       m_next = 0;
-      return m_data;
+      return 0;
     }
-    uint8_t *set_buf(uint8_t *p, size_t n) override 
-      { m_data = p; m_size = n; m_next=0; return m_data; }
+    int set_buf(StoragePtr& p, size_t n) override 
+      { m_data = std::move(p); m_size = n; m_next=0; return 0; }
     
     int putc(uint8_t c) override {
-      if (m_data && m_next < m_size ) {
-        m_data[m_next] = c;
+      if (m_data.get() && m_next < m_size ) {
+        m_data.get()[m_next] = c;
         m_next++;
         return 0;
       }
@@ -63,16 +61,18 @@ class msgbuf : public MsgBuf {
     }
     
     int putp(const uint8_t *p, size_t n) override { 
-      while (m_next < m_size && n-- && m_data) { 
+      while (m_next < m_size && n-- && m_data.get()) { 
         // TODO this is bytewise assignment - OPTIMIZE!!!
-        m_data[m_next++] = *p++;
+        m_data.get()[m_next] = *p;
+        m_next++;
+        p++;
       }
-      return (n)? -1 : 0;
+      return (n)? -1 : 0; // everything copied?
     }
 
     uint8_t getc() override {
-      if (m_data && m_next < m_size ) {
-        uint8_t c = m_data[m_next];
+      if (m_data.get() && m_next < m_size ) {
+        uint8_t c = m_data.get()[m_next];
         m_next++;
         return c;
       }
@@ -81,7 +81,7 @@ class msgbuf : public MsgBuf {
     
     uint8_t *getp(size_t n) const override {
         if (m_next + n - 1 < m_size)
-          return &m_data[m_next];
+          return &m_data.get()[m_next];
         return nullptr;
     }
 
@@ -100,13 +100,13 @@ class msgbuf : public MsgBuf {
     void hexdump(std::ostream& os) const override {
       os << std::setfill('0');
       for (auto i=0; i < m_size; i++)
-        os << std::hex << std::setw(2) << int(m_data[i]) << ' ';
+        os << std::hex << std::setw(2) << int(m_data.get()[i]) << ' ';
       os << '\n';
     }
 
   private:
     
-    uint8_t *m_data = nullptr;
+    StoragePtr m_data = nullptr;
     size_t m_size = 0;
     int m_next = 0;
 };
@@ -117,7 +117,7 @@ class SampleProto : public WireFormat {
 
   public:
     SampleProto(Message& msg);
-    SampleProto(uint8_t *buf, size_t n);
+    SampleProto(StoragePtr& buf, size_t n);
     ~SampleProto() {}    
 
     static const int par_wire_overhead = 1;
@@ -146,8 +146,8 @@ class SampleProto : public WireFormat {
 
 SampleProto::SampleProto(Message& msg) {
   
-  size_t size = wire_size(msg);
-  msgbuf *buf = new msgbuf(size);
+  auto size = wire_size(msg);
+  MsgBufPtr buf = std::make_unique<msgbuf>(size);
 
   set_buf(buf);
   set_size(size);
@@ -155,9 +155,9 @@ SampleProto::SampleProto(Message& msg) {
   to_wire(msg);
 }
 
-SampleProto::SampleProto(uint8_t *p, size_t n) {
+SampleProto::SampleProto(StoragePtr& p, size_t n) {
 
-  msgbuf *buf = new msgbuf(p, n);
+  MsgBufPtr buf = std::make_unique<msgbuf>(p, n);
   set_buf(buf);
   set_size(n);
   
@@ -172,14 +172,14 @@ SampleProto::SampleProto(uint8_t *p, size_t n) {
 }
 
 
-WireFormat* WireFormat::factory(Message& msg) {
-  WireFormat *w = new SampleProto(msg);
+WireFormatPtr WireFormat::factory(Message& msg) {
+  WireFormatPtr w = std::make_unique<SampleProto>(msg);
   return w;
 }
 
-WireFormat *WireFormat::factory(uint8_t *p, size_t n) {
-  WireFormat *w = new SampleProto(p, n);
-  return w;  
+WireFormatPtr WireFormat::factory(StoragePtr& p, size_t n) {
+  WireFormatPtr w = std::make_unique<SampleProto>(p, n);
+  return w;
 }
 
 size_t SampleProto::wire_size(const Message& msg) const {
@@ -213,7 +213,7 @@ size_t SampleProto::wire_size(const parameter& par) const {
 
 int SampleProto::to_wire(const Message& msg) {
 
-//  std::cout << "msg: " << std::hex << msg.id() << '\n';
+  std::cout << "msg: " << std::hex << msg.id() << '\n';
  
 // Message: | header | parameters | 0xFF
 // Header:  | Msg id | Msg size |
@@ -221,11 +221,15 @@ int SampleProto::to_wire(const Message& msg) {
   to_wire((uint16_t)msg.id());
   to_wire((uint16_t)size()); // wire format size 
 
-  for (auto& it : msg.params())
+  for  (auto& it : msg.params()) {
     to_wire(it.second); // serialize each parameter
+    std::cout << "end " << it.second.id() << '\n';
+  }
  
+  std::cout << "msg: " << std::hex << msg.id() << '\n';
   to_wire((uint8_t)0xFF); // end of message 
 
+  std::cout << "msg: " << std::hex << msg.id() << '\n';
   buf()->reset(); // read pointer to start of buffer
 
   return 0;
@@ -237,7 +241,7 @@ int SampleProto::to_wire(const parameter& par) {
 // fixed size parameter:    | par id | data
 // variable size parameter: | par id | size | data
 
-//  std::cout << "par: " << par.id() << '\n';
+  std::cout << "par: " << par.id() << '\n';
   if (par.is_set()) {
     to_wire((uint8_t)par.id());
     if  (!par.is_scalar() && !par.group())
@@ -252,13 +256,12 @@ int SampleProto::to_wire(const GroupBase& group) {
 // group parameter: | par id | group | 0xFF
 // group          : | par 1 | par 2 | ...
 
-//  std::cout << "group" << '\n';
+  std::cout << "group" << '\n';
 
   for (auto& it : group.params())
     to_wire(it.second); // serialize each parameter
  
   to_wire((uint8_t)0xFF); // end of message 
-//  std::cout << "end group" << '\n';
   return 0;
 }
 
@@ -382,6 +385,8 @@ void SampleProto::dump(std::ostream& os, const Message& msg) const {
 
   (void)msg;
   uint16_t id, size; 
+
+  os << "dump\n";
 
   buf()->reset();
   from_wire(id);

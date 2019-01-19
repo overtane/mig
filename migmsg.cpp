@@ -36,6 +36,8 @@ int WireFormat::to_wire(uint8_t value) {
 
 int WireFormat::to_wire(uint16_t value) {
 
+  //std::cout << "- uint16_t\n";
+
   if (byteorder() == ByteOrder::Network) {
     value = htons(value);
     return buf()->putp((uint8_t *)&value, 2);
@@ -157,25 +159,22 @@ int WireFormat::from_wire(bool& data) const {
   return 0;
 }
 
+MessagePtr Message::factory(WireFormatPtr& w) {
 
-
-std::unique_ptr<Message> Message::factory(WireFormat *w) {
-
-  std::unique_ptr<Message> m = nullptr;
-
-  if (w) {
+  if (w.get()) {
     const auto& it = Message::creators.find(w->id());
     if (it != Message::creators.end()) {
       MessageCreatorFunc f = it->second;
-      m = f();
-      if (m) {
-        m->set_wire_format(w);
-        w->from_wire(*m);
+      auto m = f();
+      if (m.get()) {
+        m->set_wire_format(w); // proto object now owned by message 
+        m->wire_format()->from_wire(*m);
+        return m;
       }
     }
   }
 
-  return m;
+  return nullptr;
 }
 
 
