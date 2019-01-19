@@ -32,6 +32,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 
 namespace mig {
 
@@ -52,7 +53,8 @@ class GroupBase;
 
 typedef uint8_t enum_t;
 typedef std::map<int, ::mig::parameter&> parameter_container_t;
-typedef Message *(*MessageCreatorFunc)(void);
+typedef std::unique_ptr<Message> MessagePtr;
+typedef MessagePtr (*MessageCreatorFunc)(void);
 
 struct blob_t {
   uint8_t *m_data = nullptr;
@@ -233,7 +235,7 @@ class Message : public GroupBase {
 
   public:
     //! Instantiate messages from incoming byte stream
-    static Message* factory(WireFormat *);
+    static MessagePtr factory(WireFormat *);
 
     Message() = delete;
     ~Message() { if (m_wire_format) delete m_wire_format; }

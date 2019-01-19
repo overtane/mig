@@ -5,7 +5,7 @@ GTEST_SRC= ${GTEST_DIR}/src/gtest-all.cc
 GTEST_OBJ=gtest-all.o
 
 CPP=g++
-CPPFLAGS ?= -DDEBUG -std=c++11 -isystem ${GTEST_DIR}/include -I..
+CPPFLAGS ?= -DDEBUG -std=c++14 -isystem ${GTEST_DIR}/include -I..
 
 all: libgtest.a testrunner
 

@@ -159,9 +159,9 @@ int WireFormat::from_wire(bool& data) const {
 
 
 
-Message *Message::factory(WireFormat *w) {
+std::unique_ptr<Message> Message::factory(WireFormat *w) {
 
-  Message *m = nullptr;
+  std::unique_ptr<Message> m = nullptr;
 
   if (w) {
     const auto& it = Message::creators.find(w->id());

@@ -61,7 +61,7 @@ class TestMessage1002 : public ::mig::Message {
   public:
     TestMessage1002() : ::mig::Message(0x1002, m_params) { }
     virtual ~TestMessage1002() {}
-    static ::mig::Message *create() { return new TestMessage1002(); }
+    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1002>(); }
 
     ::mig::scalar_parameter<int8_t> param1{0, ::mig::OPTIONAL};
     ::mig::scalar_parameter<bool> param2{1, ::mig::REQUIRED};  
@@ -234,7 +234,7 @@ int main() {
   m2.wire_format()->buf()->reset();
   memcpy(p,  m2.wire_format()->buf()->getp(n), n);
 
-  mig::Message *m3 = mig::Message::factory(mig::WireFormat::factory(p,n));
+  mig::MessagePtr m3 = mig::Message::factory(mig::WireFormat::factory(p,n));
   if (m3) m3->dump(std::cout);
   dump(std::cout, *m3);
 }

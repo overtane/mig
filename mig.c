@@ -570,8 +570,13 @@ void generate_cpp( struct element *ep, FILE *of)
   }
 
   fprintf(of, "//  %s\n", migpars.out);
+  fprintf(of, "//\n");
   fprintf(of, "//  This is an automatically generated file\n");
-  fprintf(of, "//  Please do not edit\n");
+  fprintf(of, "//\n");
+  fprintf(of, "//  --------------------\n");
+  fprintf(of, "//  PLEASE, DO NOT EDIT!\n");
+  fprintf(of, "//  --------------------\n");
+  fprintf(of, "//\n");
   fprintf(of, "//  Source:  %s\n", migpars.in);
   fprintf(of, "//  %s\n", asctime(tm));
   fprintf(of, "#ifndef _%s_H_\n", upper);
@@ -588,7 +593,8 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "  public:\n");
         fprintf(of, "    %s() : ::mig::Message(0x%x, m_params) {}\n",
           ep->message.name, ep->message.id);
-        fprintf(of, "    static ::mig::Message *create() {  return new %s; }\n", ep->message.name);
+        fprintf(of, "    static ::mig::MessagePtr create() ");
+        fprintf(of, "{ return std::make_unique<%s>(); }\n", ep->message.name);
         if (pp)
           generate_parameters(of, pp);
 

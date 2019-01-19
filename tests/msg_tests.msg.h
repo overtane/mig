@@ -1,8 +1,13 @@
 //  msg_tests.msg.h
+//
 //  This is an automatically generated file
-//  Please do not edit
+//
+//  --------------------
+//  PLEASE, DO NOT EDIT!
+//  --------------------
+//
 //  Source:  msg_tests.msg
-//  Fri Jan 18 18:20:40 2019
+//  Sat Jan 19 13:39:18 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -19,7 +24,7 @@ class TestMessage1001 : public ::mig::Message {
 
   public:
     TestMessage1001() : ::mig::Message(0x1001, m_params) {}
-    static ::mig::Message *create() {  return new TestMessage1001; }
+    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1001>(); }
 
   private:
     const ::mig::parameter_container_t m_params = {
@@ -46,7 +51,7 @@ class TestMessage1002 : public ::mig::Message {
 
   public:
     TestMessage1002() : ::mig::Message(0x1002, m_params) {}
-    static ::mig::Message *create() {  return new TestMessage1002; }
+    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1002>(); }
 
     ::mig::scalar_parameter<::mig::void_t> param1{0};
     ::mig::scalar_parameter<uint8_t> param2{1};
@@ -70,7 +75,7 @@ class TestMessage1003 : public ::mig::Message {
 
   public:
     TestMessage1003() : ::mig::Message(0x1003, m_params) {}
-    static ::mig::Message *create() {  return new TestMessage1003; }
+    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1003>(); }
 
     ::mig::var_parameter<std::string> param1{2};
     ::mig::var_parameter<::mig::blob_t> param2{4};
