@@ -177,5 +177,4 @@ MessagePtr Message::factory(WireFormatPtr& w) {
   return nullptr;
 }
 
-
 }

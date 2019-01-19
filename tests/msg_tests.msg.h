@@ -7,7 +7,7 @@
 //  --------------------
 //
 //  Source:  msg_tests.msg
-//  Sat Jan 19 13:39:18 2019
+//  Sat Jan 19 23:20:57 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -77,16 +77,16 @@ class TestMessage1003 : public ::mig::Message {
     TestMessage1003() : ::mig::Message(0x1003, m_params) {}
     static ::mig::MessagePtr create() { return std::make_unique<TestMessage1003>(); }
 
-    ::mig::var_parameter<std::string> param1{2};
     ::mig::var_parameter<::mig::blob_t> param2{4};
+    ::mig::var_parameter<std::string> param1{2};
     ::mig::group_parameter<TestGroup1> param3{6};
     ::mig::scalar_parameter<::mig::void_t> param4{3, ::mig::OPTIONAL};
     ::mig::scalar_parameter<uint8_t> param5{5};
 
   private:
     const ::mig::parameter_container_t m_params = {
-      {2, param1},
       {4, param2},
+      {2, param1},
       {6, param3},
       {3, param4},
       {5, param5},

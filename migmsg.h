@@ -62,13 +62,50 @@ typedef std::unique_ptr<uint8_t []> StoragePtr; // for dynamic storage areas
 
 typedef MessagePtr (*MessageCreatorFunc)(void);
 
-struct blob_t {
-  uint8_t *m_data = nullptr;
-  size_t m_size = 0;
+class blob_t {
+
+  public:
+    blob_t(StoragePtr& p, size_t n) : m_data(nullptr) { assign(p, n); }
+    blob_t(uint8_t *p, size_t n) : m_storage(nullptr) { assign(p, n); }
+
+    void assign(StoragePtr& p, size_t n) {
+      m_data = p.get();
+      m_storage = std::move(p);
+      m_size = (m_data) ? n : 0;
+    }
+
+    void assign(const uint8_t *p, size_t n) {
+      m_data = p;
+      m_storage = nullptr;
+      m_size = (m_data) ? n : 0;
+    }
+
+    void assign(blob_t& b) {
+      if (b.m_storage != nullptr)
+        assign(b.m_storage, b.m_size);
+      else
+        assign(b.m_data, b.m_size);
+    }
+
+    bool equals(const blob_t& b) const {
+      if (m_size != b.size())
+        return false;
+      else if (m_data == b.data())
+        return true;
+      else {
+        for (auto i=0; i<m_size; i++)
+          if (m_data[i] != b.data()[i]) return false;
+      }
+      return true;
+    }
+
+    const uint8_t *data() const { return m_data; }
+    size_t size() const { return m_size; }
   
-  uint8_t *data() const { return m_data; }
-  size_t size() const { return m_size; }
-  void assign(uint8_t *p, int n) { m_data = p, m_size = n; }
+  private:
+    StoragePtr m_storage;
+    const uint8_t *m_data;
+    size_t m_size = 0;
 };
 
 struct void_t {};
@@ -278,12 +315,18 @@ class scalar_parameter : public parameter {
 
   public:
     scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
-    scalar_parameter& operator=(T value) { this->set(value); return *this; } 
+    scalar_parameter& operator=(T value) { this->assign(value); return *this; } 
+    bool operator==(T value) const { return m_data == value; }
+    bool operator!=(T value) const { return m_data != value; }
+    bool operator>(T value) const { return m_data > value; }
+    bool operator>=(T value) const { return !(m_data < value); }
+    bool operator<(T value) const { return m_data < value; }
+    bool operator<=(T value) const { return !(m_data > value); }
 
-    void set(T value) { this->m_data = value; this->parameter::set(); }
-    T get() const { return this->m_data; }
-
+    void assign(T value) { this->m_data = value; this->parameter::set(); }
+    const T& data() const { return this->m_data; }
     std::size_t size() const override { return sizeof(T); }
+
     int data_to_wire(WireFormat& w) const override { return w.to_wire(m_data); }
     int data_from_wire(const WireFormat& w) override { 
       parameter::set(); 
@@ -300,9 +343,8 @@ class scalar_parameter <void_t> : public parameter {
   public:
     scalar_parameter(int id, bool optional=false) : parameter(id, optional) {}
 
-    bool get() const { return this->is_set(); }
-
     std::size_t size() const override { return 0; }
+
     int data_to_wire(WireFormat& w) const override { (void)w; return 0; }
     int data_from_wire(const WireFormat& w) override { (void)w; parameter::set(); return 0; }
 };
@@ -312,12 +354,14 @@ class enum_parameter : public parameter {
 
   public:
     enum_parameter(int id, bool optional=false) : parameter(id, optional) {}
-    enum_parameter& operator=(T value) { this->set(value); return *this; } 
+    enum_parameter& operator=(T value) { this->assign(value); return *this; } 
+    bool operator==(T value) const { return m_data == value; }
+    bool operator!=(T value) const { return m_data != value; }
 
-    void set(T value) { this->m_data = value; this->parameter::set(); }
-    T get() const { return this->m_data; }
-
+    void assign(T value) { this->m_data = value; this->parameter::set(); }
+    const T& data() const { return this->m_data; }
     std::size_t size() const override { return sizeof(mig::enum_t); }
+
     int data_to_wire(WireFormat& w) const override { return w.to_wire((enum_t)m_data); }
     int data_from_wire(const WireFormat& w) override {
       uint8_t x;
@@ -339,13 +383,14 @@ class group_parameter : public parameter {
       parameter(id, optional, false, (GroupBase*) &m_data) {} 
     virtual ~group_parameter() {} 
 
-    // set(T group) // TODO this could be copy operation 
-    T& data() { return this->m_data; }
+    //void assign(const T& group) // TODO this could be a deep copy operation 
+    const T& data() { return this->m_data; }
+    std::size_t size() const override { return this->m_data.size(); }
 
     bool is_set() const override { return this->m_data.is_set(); }
-    std::size_t size() const override { return this->m_data.size(); }
     bool is_valid() const override { return (this->m_data.is_valid() || this->is_optional()); }
-    size_t wire_size(const WireFormat& w) const override { return this->m_data.wire_size(w); }
+
+    //size_t wire_size(const WireFormat& w) const override { return this->m_data.wire_size(w); }
     int data_to_wire(WireFormat& w) const override { return w.to_wire((const GroupBase&)(m_data)); }
     int data_from_wire(const WireFormat& w) override { return w.from_wire((GroupBase&)(m_data)); }
 
@@ -359,16 +404,15 @@ class var_parameter : public parameter {
 
   public:
     var_parameter(int id, bool optional=false) : parameter(id, optional, false, nullptr) {}
-    virtual ~var_parameter() { /* TODO how to cleanup data */ } 
+    virtual ~var_parameter() { } 
 
-    void set(T& data) {
-        this->m_data.m_data = data.data();
-        this->m_data.m_size = data.size();
+    void assign(T& data) {
+        m_data.assign(data);
         this->parameter::set();
     }
-    T* get() { return this->m_data.data(); }
-
+    const T& data() { return this->m_data; }
     std::size_t size() const override { return this->m_data.size(); }
+
     int data_to_wire(WireFormat& w) const override { return w.to_wire(m_data); }
     int data_from_wire(const WireFormat& w) override { 
       parameter::set();
@@ -376,7 +420,7 @@ class var_parameter : public parameter {
     }
 
   private:
-    T m_data;
+    T m_data = T(nullptr, 0);
 
 };
 

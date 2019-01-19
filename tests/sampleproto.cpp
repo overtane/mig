@@ -296,16 +296,11 @@ int SampleProto::from_wire(GroupBase& group) const {
 }
 
 int SampleProto::from_wire(blob_t& data) const {
-  std::cout << "blob" << "\n"; 
   uint16_t n;
   from_wire(n);
-  std::cout << "blob 2 " << n << "\n"; 
   uint8_t *p = buf()->getp(n);
-  std::cout << "blob 3 " << "\n"; 
   data.assign(p, n);
-  std::cout << "blob 4 " << "\n"; 
   buf()->advance(n);
-  std::cout << "blob done" << "\n"; 
   return 0;
 }
 

@@ -47,10 +47,10 @@ message TestMessage1002 = 4098 {
   bool param6 = 13 [optional];
 }
 
-// message with composite parameters
+// message with variable length  parameters
 message TestMessage1003 = 4099 {
-  string param1 = 2; 
   blob param2 = 4; 
+  string param1 = 2; 
   TestGroup1 param3 = 6; 
   void param4 = 3 [optional, optional];
   uint8 param5 = 5; 

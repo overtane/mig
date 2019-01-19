@@ -37,6 +37,7 @@ class MessageTests : public ::testing::Test
   public:
     TestMessage1001 m1;
     TestMessage1002 m2;
+    TestMessage1003 m3;
 };
 
 TEST_F(MessageTests, Enum1) 
@@ -118,20 +119,21 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param2.is_set(), true);
   EXPECT_EQ(m2.param2.is_valid(), true);
   EXPECT_EQ(m2.param2.size(), 1);
-  EXPECT_EQ(m2.param2.get(), 42);
+  EXPECT_EQ(m2.param2.data(), 42);
+  EXPECT_EQ((m2.param2==42), true);
   EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.is_valid(), false);
 
   // set int16 parameter
-  m2.param3.set(-12345);
+  m2.param3.assign(-12345);
   EXPECT_EQ(m2.param3.is_set(), true);
   EXPECT_EQ(m2.param3.is_valid(), true);
   EXPECT_EQ(m2.param3.size(), 2);
-  EXPECT_EQ(m2.param3.get(), -12345);
+  EXPECT_EQ(m2.param3.data(), -12345);
   EXPECT_EQ(m2.size(), 9);
   m2.param3 = 12; // reassign value
-  EXPECT_EQ(m2.param3.get(), 12);
+  EXPECT_EQ(m2.param3.data(), 12);
 
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true); // message is valid when all required parameters are set
@@ -141,7 +143,12 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param4.is_set(), true);
   EXPECT_EQ(m2.param4.is_valid(), true);
   EXPECT_EQ(m2.param4.size(), 4);
-  EXPECT_EQ(m2.param4.get(), 7654321);
+  EXPECT_EQ((m2.param4==7654321), true);
+  EXPECT_EQ((m2.param4!=7654321), false);
+  EXPECT_EQ((m2.param4>=7654321), true);
+  EXPECT_EQ((m2.param4<=7654321), true);
+  EXPECT_EQ((m2.param4>7654321), false);
+  EXPECT_EQ((m2.param4<7654321), false);
   EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
@@ -151,27 +158,48 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param5.is_set(), true);
   EXPECT_EQ(m2.param5.is_valid(), true);
   EXPECT_EQ(m2.param5.size(), 1);
-  EXPECT_EQ(m2.param5.get(), TestEnum1::VALUE2);
+  EXPECT_EQ(m2.param5.data(), TestEnum1::VALUE2);
+  EXPECT_EQ((m2.param5==TestEnum1::VALUE2), true);
+  EXPECT_EQ((m2.param5!=TestEnum1::VALUE2), false);
   EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
   m2.param5 = TestEnum1::VALUE1;
-  EXPECT_EQ(m2.param5.get(), TestEnum1::VALUE1);
+  EXPECT_EQ(m2.param5.data(), TestEnum1::VALUE1);
 
   // set bool parameter
   m2.param6 = false;
   EXPECT_EQ(m2.param6.is_set(), true);
   EXPECT_EQ(m2.param6.is_valid(), true);
   EXPECT_EQ(m2.param6.size(), 1);
-  EXPECT_EQ(m2.param6.get(), false);
+  EXPECT_EQ(m2.param6.data(), false);
   EXPECT_EQ(m2.size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
   m2.param6 = true;
-  EXPECT_EQ(m2.param6.get(), true);
+  EXPECT_EQ(m2.param6.data(), true);
 
+  
   
 }
 
 
+TEST_F(MessageTests, Message1003_blob) 
+{
+  // blob data tests
 
+  EXPECT_EQ(m3.param2.is_set(), false);
+  EXPECT_EQ(m3.param2.size(), 0);
+
+  uint8_t a[] = { 1, 2, 3 };
+  ::mig::blob_t b(a, 3);
+  m3.param2.assign(b);
+  EXPECT_EQ(m3.param2.is_set(), true);
+  EXPECT_EQ(m3.param2.size(), 3);
+  EXPECT_EQ(m3.param2.data().equals(b), true);
+  uint8_t a2[] = { 1, 2, 3 };
+  ::mig::blob_t b2(a2, 3);
+  EXPECT_EQ(m3.param2.data().equals(b2), true);
+  a2[2] = 4;
+  EXPECT_EQ(m3.param2.data().equals(b2), false);
+}
