@@ -134,6 +134,7 @@ class SampleProto : public WireFormat {
     int from_wire(Message&) const override;
     int from_wire(Group&) const override;
     int from_wire(blob_t&) const override;
+    int from_wire(string_t&) const override;
     int from_wire(std::string&) const override;
 
     using WireFormat::to_wire;
@@ -303,6 +304,16 @@ int SampleProto::from_wire(blob_t& data) const {
   buf()->advance(n);
   return 0;
 }
+
+int SampleProto::from_wire(string_t& data) const {
+  uint16_t n;
+  from_wire(n);
+  const char *p = (char *)buf()->getp(n);
+  data.assign(p, n);
+  buf()->advance(n);
+  return 0;
+}
+
 
 int SampleProto::from_wire(std::string& data) const {
   uint16_t n;

@@ -79,10 +79,16 @@ int WireFormat::to_wire(uint64_t value) {
 }
 
 int WireFormat::to_wire(const std::string& value) {
-    return buf()->putp((uint8_t *)value.c_str(), value.size()+1);
+  return buf()->putp((uint8_t *)value.c_str(), value.size()+1);
+}
+
+int WireFormat::to_wire(const string_t& value) {
+  // TODO limit checks
+  return buf()->putp((const uint8_t *)value.data(), value.size());
 }
 
 int WireFormat::to_wire(const blob_t& value) {
+    // TODO limit checks
   return buf()->putp((uint8_t *)value.data(), value.size());
 }
 
