@@ -7,7 +7,7 @@
 //  --------------------
 //
 //  Source:  msg_tests.msg
-//  Sat Jan 19 23:20:57 2019
+//  Sun Jan 20 11:22:16 2019
 
 #ifndef _MSG_TESTS_MSG_H_
 #define _MSG_TESTS_MSG_H_
@@ -24,20 +24,20 @@ class TestMessage1001 : public ::mig::Message {
 
   public:
     TestMessage1001() : ::mig::Message(0x1001, m_params) {}
-    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1001>(); }
+    static ::mig::message_ptr_t create() { return std::make_unique<TestMessage1001>(); }
 
   private:
     const ::mig::parameter_container_t m_params = {
     };
 };
 
-struct TestGroup1 : ::mig::GroupBase {
+struct TestGroup1 : ::mig::Group {
 
   public:
-    TestGroup1() : ::mig::GroupBase(m_params) {}
+    TestGroup1() : ::mig::Group(m_params) {}
 
-    ::mig::scalar_parameter<::mig::void_t> param1{0};
-    ::mig::scalar_parameter<uint32_t> param2{9};
+    ::mig::ScalarParameter<::mig::void_t> param1{0};
+    ::mig::ScalarParameter<uint32_t> param2{9};
 
   private:
     const ::mig::parameter_container_t m_params = {
@@ -51,14 +51,14 @@ class TestMessage1002 : public ::mig::Message {
 
   public:
     TestMessage1002() : ::mig::Message(0x1002, m_params) {}
-    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1002>(); }
+    static ::mig::message_ptr_t create() { return std::make_unique<TestMessage1002>(); }
 
-    ::mig::scalar_parameter<::mig::void_t> param1{0};
-    ::mig::scalar_parameter<uint8_t> param2{1};
-    ::mig::scalar_parameter<int16_t> param3{2};
-    ::mig::scalar_parameter<uint32_t> param4{3, ::mig::OPTIONAL};
-    ::mig::enum_parameter<TestEnum1> param5{12, ::mig::OPTIONAL};
-    ::mig::scalar_parameter<bool> param6{13, ::mig::OPTIONAL};
+    ::mig::ScalarParameter<::mig::void_t> param1{0};
+    ::mig::ScalarParameter<uint8_t> param2{1};
+    ::mig::ScalarParameter<int16_t> param3{2};
+    ::mig::ScalarParameter<uint32_t> param4{3, ::mig::OPTIONAL};
+    ::mig::EnumParameter<TestEnum1> param5{12, ::mig::OPTIONAL};
+    ::mig::ScalarParameter<bool> param6{13, ::mig::OPTIONAL};
 
   private:
     const ::mig::parameter_container_t m_params = {
@@ -75,13 +75,13 @@ class TestMessage1003 : public ::mig::Message {
 
   public:
     TestMessage1003() : ::mig::Message(0x1003, m_params) {}
-    static ::mig::MessagePtr create() { return std::make_unique<TestMessage1003>(); }
+    static ::mig::message_ptr_t create() { return std::make_unique<TestMessage1003>(); }
 
-    ::mig::var_parameter<::mig::blob_t> param2{4};
-    ::mig::var_parameter<std::string> param1{2};
-    ::mig::group_parameter<TestGroup1> param3{6};
-    ::mig::scalar_parameter<::mig::void_t> param4{3, ::mig::OPTIONAL};
-    ::mig::scalar_parameter<uint8_t> param5{5};
+    ::mig::VarParameter<::mig::blob_t> param2{4};
+    ::mig::VarParameter<std::string> param1{2};
+    ::mig::GroupParameter<TestGroup1> param3{6};
+    ::mig::ScalarParameter<::mig::void_t> param4{3, ::mig::OPTIONAL};
+    ::mig::ScalarParameter<uint8_t> param5{5};
 
   private:
     const ::mig::parameter_container_t m_params = {

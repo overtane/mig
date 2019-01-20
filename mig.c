@@ -517,15 +517,15 @@ static void generate_parameters(FILE *of, struct parameter *pp)
     const char *optional = (pp->optional)? ", ::mig::OPTIONAL" : "";
 
     if (ep->type == ET_GROUP)
-      partype = "group";
+      partype = "Group";
     else if (ep->type == ET_DATATYPE) {
       datatype = ep->datatype.type; 
-      partype = (ep->datatype.var)? "var" : "scalar";
+      partype = (ep->datatype.var)? "Var" : "Scalar";
     } else if (ep->type == ET_ENUM) 
-      partype = "enum";
+      partype = "Enum";
 
     if (partype)
-      fprintf(of, "    ::mig::%s_parameter<%s> %s{%d%s};\n",
+      fprintf(of, "    ::mig::%sParameter<%s> %s{%d%s};\n",
         partype, datatype, pp->name, pp->id, optional);
 
     pp = pp->next;
@@ -593,7 +593,7 @@ void generate_cpp( struct element *ep, FILE *of)
         fprintf(of, "  public:\n");
         fprintf(of, "    %s() : ::mig::Message(0x%x, m_params) {}\n",
           ep->message.name, ep->message.id);
-        fprintf(of, "    static ::mig::MessagePtr create() ");
+        fprintf(of, "    static ::mig::message_ptr_t create() ");
         fprintf(of, "{ return std::make_unique<%s>(); }\n", ep->message.name);
         if (pp)
           generate_parameters(of, pp);
@@ -607,10 +607,10 @@ void generate_cpp( struct element *ep, FILE *of)
         
     case ET_GROUP: {
         struct parameter *pp = ep->group.parameters;
-        fprintf(of, "struct %s : ::mig::GroupBase {\n\n", ep->group.name);
+        fprintf(of, "struct %s : ::mig::Group {\n\n", ep->group.name);
 
         fprintf(of, "  public:\n");
-        fprintf(of, "    %s() : ::mig::GroupBase(m_params) {}\n", ep->group.name);
+        fprintf(of, "    %s() : ::mig::Group(m_params) {}\n", ep->group.name);
         if (pp)
           generate_parameters(of, pp);
 

@@ -39,7 +39,7 @@ class msgbuf : public MsgBuf {
   
   public:
     msgbuf(size_t n) { alloc_buf(n); }
-    msgbuf(StoragePtr& p, size_t n) { set_buf(p, n); }
+    msgbuf(storage_ptr_t& p, size_t n) { set_buf(p, n); }
     ~msgbuf() {}
     
     int alloc_buf(size_t n) override {
@@ -48,7 +48,7 @@ class msgbuf : public MsgBuf {
       m_next = 0;
       return 0;
     }
-    int set_buf(StoragePtr& p, size_t n) override 
+    int set_buf(storage_ptr_t& p, size_t n) override 
       { m_data = std::move(p); m_size = n; m_next=0; return 0; }
     
     int putc(uint8_t c) override {
@@ -106,7 +106,7 @@ class msgbuf : public MsgBuf {
 
   private:
     
-    StoragePtr m_data = nullptr;
+    storage_ptr_t m_data = nullptr;
     size_t m_size = 0;
     int m_next = 0;
 };
@@ -117,22 +117,22 @@ class SampleProto : public WireFormat {
 
   public:
     SampleProto(Message& msg);
-    SampleProto(StoragePtr& buf, size_t n);
+    SampleProto(storage_ptr_t& buf, size_t n);
     ~SampleProto() {}    
 
     static const int par_wire_overhead = 1;
     static const int msg_wire_overhead = 5;
 
-    size_t wire_size(const GroupBase&) const override;
+    size_t wire_size(const Group&) const override;
     size_t wire_size(const Message&) const override;
-    size_t wire_size(const parameter&) const override;
+    size_t wire_size(const Parameter&) const override;
  
     int to_wire(const Message&) override;
-    int to_wire(const GroupBase&) override;
-    int to_wire(const parameter&) override;
+    int to_wire(const Group&) override;
+    int to_wire(const Parameter&) override;
  
     int from_wire(Message&) const override;
-    int from_wire(GroupBase&) const override;
+    int from_wire(Group&) const override;
     int from_wire(blob_t&) const override;
     int from_wire(std::string&) const override;
 
@@ -140,14 +140,14 @@ class SampleProto : public WireFormat {
     using WireFormat::from_wire;
 
     void dump(std::ostream&, const Message&) const override;
-    void dump(std::ostream&, const GroupBase&, int) const override;
+    void dump(std::ostream&, const Group&, int) const override;
 };
 
 
 SampleProto::SampleProto(Message& msg) {
   
   auto size = wire_size(msg);
-  MsgBufPtr buf = std::make_unique<msgbuf>(size);
+  msgbuf_ptr_t buf = std::make_unique<msgbuf>(size);
 
   set_buf(buf);
   set_size(size);
@@ -155,9 +155,9 @@ SampleProto::SampleProto(Message& msg) {
   to_wire(msg);
 }
 
-SampleProto::SampleProto(StoragePtr& p, size_t n) {
+SampleProto::SampleProto(storage_ptr_t& p, size_t n) {
 
-  MsgBufPtr buf = std::make_unique<msgbuf>(p, n);
+  msgbuf_ptr_t buf = std::make_unique<msgbuf>(p, n);
   set_buf(buf);
   set_size(n);
   
@@ -172,13 +172,13 @@ SampleProto::SampleProto(StoragePtr& p, size_t n) {
 }
 
 
-WireFormatPtr WireFormat::factory(Message& msg) {
-  WireFormatPtr w = std::make_unique<SampleProto>(msg);
+wire_format_ptr_t WireFormat::factory(Message& msg) {
+  wire_format_ptr_t w = std::make_unique<SampleProto>(msg);
   return w;
 }
 
-WireFormatPtr WireFormat::factory(StoragePtr& p, size_t n) {
-  WireFormatPtr w = std::make_unique<SampleProto>(p, n);
+wire_format_ptr_t WireFormat::factory(storage_ptr_t& p, size_t n) {
+  wire_format_ptr_t w = std::make_unique<SampleProto>(p, n);
   return w;
 }
 
@@ -189,14 +189,14 @@ size_t SampleProto::wire_size(const Message& msg) const {
   return s;
 }
 
-size_t SampleProto::wire_size(const GroupBase& group) const {
+size_t SampleProto::wire_size(const Group& group) const {
   auto s = 1;
   for (auto& it : group.params())
     s += wire_size(it.second);
   return s;
 }
 
-size_t SampleProto::wire_size(const parameter& par) const {
+size_t SampleProto::wire_size(const Parameter& par) const {
 
 // if parameter is fixed size, wire size is derived from data type
 // for variable size parameters, data size is given before data
@@ -235,7 +235,7 @@ int SampleProto::to_wire(const Message& msg) {
   return 0;
 }
 
-int SampleProto::to_wire(const parameter& par) {
+int SampleProto::to_wire(const Parameter& par) {
 
 // parameters               | par 1 | par 2 | ...
 // fixed size parameter:    | par id | data
@@ -251,7 +251,7 @@ int SampleProto::to_wire(const parameter& par) {
   return 0;
 }
 
-int SampleProto::to_wire(const GroupBase& group) {
+int SampleProto::to_wire(const Group& group) {
 
 // group parameter: | par id | group | 0xFF
 // group          : | par 1 | par 2 | ...
@@ -269,10 +269,10 @@ int SampleProto::from_wire(Message& msg) const {
 
   buf()->reset();
   buf()->advance(4);
-  return from_wire((GroupBase&)msg);
+  return from_wire((Group&)msg);
 }
 
-int SampleProto::from_wire(GroupBase& group) const {
+int SampleProto::from_wire(Group& group) const {
 
   std::cout << "group\n"; 
   int ret = 0;
@@ -283,7 +283,7 @@ int SampleProto::from_wire(GroupBase& group) const {
     std::cout << "trying parameter " << std::dec << int(c) << "\n"; 
     if (group.params().count(int(c)) > 0) { // valid param id
       std::cout << "parsing parameter " << std::dec << int(c) << "\n"; 
-      parameter& par = group.params().at(c);
+      Parameter& par = group.params().at(c);
       ret -= par.data_from_wire(*this);
 
     } else 
@@ -335,14 +335,14 @@ void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
 }
 #endif
 
-void SampleProto::dump(std::ostream& os, const GroupBase& group, int id) const {
+void SampleProto::dump(std::ostream& os, const Group& group, int id) const {
 
   uint16_t size;
   uint8_t c;
 
   while ( (c = buf()->getc()) != 0xff) {
     if (group.params().count(c) > 0) {
-      parameter& par = group.params().at(c);
+      Parameter& par = group.params().at(c);
 
       if (dynamic_cast<const Message*>(&group))
         // direct parameter
@@ -391,7 +391,7 @@ void SampleProto::dump(std::ostream& os, const Message& msg) const {
   os << "Message: 0x" << std::hex << std::setw(4) << id;
   os << std::dec << ", length " << size << '(' << msg.size() << ")\n";
 
-  dump(os, dynamic_cast<const GroupBase&>(msg), msg.id());
+  dump(os, dynamic_cast<const Group&>(msg), msg.id());
 }
 
 

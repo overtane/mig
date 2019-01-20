@@ -159,7 +159,7 @@ int WireFormat::from_wire(bool& data) const {
   return 0;
 }
 
-MessagePtr Message::factory(WireFormatPtr& w) {
+message_ptr_t Message::factory(wire_format_ptr_t& w) {
 
   if (w.get()) {
     const auto& it = Message::creators.find(w->id());
