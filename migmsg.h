@@ -288,6 +288,7 @@ class WireFormat {
     virtual int to_wire(uint32_t);
     virtual int to_wire(uint64_t);
     virtual int to_wire(bool);
+    virtual int to_wire(const void_t&);
     virtual int to_wire(const blob_t&);
     virtual int to_wire(const string_t&);
     virtual int to_wire(const std::string&);
@@ -301,6 +302,7 @@ class WireFormat {
     virtual int from_wire(uint32_t&) const;
     virtual int from_wire(uint64_t&) const;
     virtual int from_wire(bool&) const;
+    virtual int from_wire(void_t&) const;
     virtual int from_wire(blob_t&) const = 0;
     virtual int from_wire(string_t&) const = 0;
     virtual int from_wire(std::string&) const = 0;
@@ -342,13 +344,15 @@ class Parameter {
     bool is_repeated() const { return this->m_repeated; }
     int  id() const { return this->m_id; }
 
-    virtual bool is_scalar() const = 0;
-    virtual const Group* group() const = 0;
+    virtual bool is_scalar() const { return false; }
+    virtual bool is_group() const { return false; }
+    virtual const Group* group(int i=0) const { return nullptr; };
     virtual int nrepeats() const { return 1; }
     virtual bool is_set() const { return this->m_is_set; }
     virtual std::size_t item_size() const = 0;
     virtual std::size_t data_size() const { return nrepeats() * item_size(); }
     virtual bool is_valid() const { return this->is_set() || this->is_optional(); }
+    virtual int size_from_wire(const WireFormat&, int i=0) const { return 0; }
     virtual int data_to_wire(WireFormat&, int i=0) const = 0;
     virtual int data_from_wire(const WireFormat&) = 0;
 
@@ -398,7 +402,9 @@ class Message : public Group {
 
     int id() const { return this->m_id; }
 
-    void set_wire_format(wire_format_ptr_t& wire_format)  { m_wire_format = std::move(wire_format); }
+    void set_wire_format(wire_format_ptr_t& wire_format) { 
+      m_wire_format = std::move(wire_format);
+    }
     WireFormat* wire_format() const { return m_wire_format.get(); }
     int to_wire() {
       m_wire_format = WireFormat::factory(*this);
@@ -440,9 +446,7 @@ class ScalarParameter : public Parameter {
     void assign(const T& value) { this->m_data = value; this->Parameter::set(); }
     const T& data() const { return this->m_data; }
     size_t item_size() const override { return sizeof(T); }
-    const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
-    //bool is_repeated() const override { return false; }
 
     int data_to_wire(WireFormat& w, int) const override { return w.to_wire(m_data); }
     int data_from_wire(const WireFormat& w) override { 
@@ -451,7 +455,7 @@ class ScalarParameter : public Parameter {
     }
 
   private:
-    T m_data = T(0);
+    T m_data;
 };
 
 
@@ -464,18 +468,16 @@ class ScalarArray : public Parameter {
     T& operator[](int i) { 
       if (m_data.size() == i) // a light hack: indexing end pos pushes new item
         m_data.push_back(0);  // TODO fix this
-      return m_data[i]; }
-
-    void assign(int i, const T value) {
-      if (i < m_data.size())
-        this->m_data[i] = value;
+      return m_data[i];
     }
+    void assign(int i, T value) { if (i < m_data.size()) this->m_data[i] = value; }
+    void append(T value) { this->m_data.push_back(value); }
+
     const T& data(int i) const { return this->m_data[i]; }
-    std::vector<T>& data() { return this->m_data; }
+    const std::vector<T>& data() { return this->m_data; }
     size_t item_size() const override { return sizeof(T); }
-    const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
-    bool is_set() const override { return this->m_data.size() > 0; }
+    bool is_set() const override { return this->nrepeats() > 0; }
     int nrepeats() const override { return m_data.size(); }
 
     int data_to_wire(WireFormat& w, int i) const override { 
@@ -503,11 +505,35 @@ class ScalarParameter <void_t> : public Parameter {
     ScalarParameter(int id, bool optional=false) : Parameter(id, optional) {}
 
     std::size_t item_size() const override { return 0; }
-    const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
 
     int data_to_wire(WireFormat& w, int) const override { (void)w; return 0; }
     int data_from_wire(const WireFormat& w) override { (void)w; Parameter::set(); return 0; }
+};
+
+template <>
+class ScalarArray <void_t>: public Parameter {
+
+  public:
+    ScalarArray(int id, bool optional=false) : Parameter(id, optional, true) {}
+
+    void append() { void_t value; this->m_data.push_back(value); }
+
+    const std::vector<void_t>& data() { return this->m_data; }
+    size_t item_size() const override { return 0; }
+    bool is_scalar() const override { return true; }
+    bool is_set() const override { return this->nrepeats() > 0; }
+    int nrepeats() const override { return m_data.size(); }
+
+    int data_to_wire(WireFormat& w, int) const override { return 0; } 
+    int data_from_wire(const WireFormat& w) override { 
+      void_t data;
+      m_data.push_back(data);
+      return 0; 
+    }
+
+  private:
+    std::vector<void_t> m_data;
 };
 
 template <class T>
@@ -522,7 +548,6 @@ class EnumParameter : public Parameter {
     void assign(T value) { this->m_data = value; this->Parameter::set(); }
     const T& data() const { return this->m_data; }
     std::size_t item_size() const override { return sizeof(mig::enum_t); }
-    const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
 
     int data_to_wire(WireFormat& w, int) const override { return w.to_wire((enum_t)m_data); }
@@ -545,19 +570,23 @@ class GroupParameter : public Parameter {
 
   public:
     GroupParameter(int id, bool optional=false) : Parameter(id, optional) {} 
-    virtual ~GroupParameter() {} 
 
     //void assign(const T& group) // TODO this could be a deep copy operation 
     T& data() { return this->m_data; } // non-const return so that group params may be accessed
     std::size_t item_size() const override { return this->m_data.data_size(); }
-    const Group* group() const override { return (Group*)&m_data; }
-    bool is_scalar() const override { return false; }
+
+    bool is_group() const override { return true; }
+    const Group* group(int) const override { return (const Group*)&m_data; }
 
     bool is_set() const override { return this->m_data.is_set(); }
     bool is_valid() const override { return (this->m_data.is_valid() || this->is_optional()); }
 
-    int data_to_wire(WireFormat& w, int) const override { return w.to_wire((const Group&)(m_data)); }
-    int data_from_wire(const WireFormat& w) override { return w.from_wire((Group&)(m_data)); }
+    int data_to_wire(WireFormat& w, int) const override { 
+      return w.to_wire((const Group&)(m_data));
+    }
+    int data_from_wire(const WireFormat& w) override { 
+      return w.from_wire((Group&)(m_data));
+    }
 
   private:
     T m_data;
@@ -565,11 +594,59 @@ class GroupParameter : public Parameter {
 };
 
 template <class T>
+class GroupArray : public Parameter {
+
+  public:
+    GroupArray(int id, bool optional=false) : Parameter(id, optional, true) {}
+
+    T& operator[](int i) { return m_data[i]; }
+    void assign(int i, const T* value) {
+      if (i < m_data.size())
+        this->m_data[i] = value;
+    }
+    void append(const T* value) { this->m_data.push_back(value); }
+    const T& data(int i) const { return this->m_data[i]; }
+    const std::vector<T>& data() { return this->m_data; }
+    size_t item_size() const override { return 0; }
+    size_t data_size() const override { 
+      auto s = 0;
+      for (auto& it : m_data )
+        s += it->data_size();
+      return s;
+    }
+    bool is_group() const override { return true; }
+    const Group* group(int i) const override {
+      if (i < m_data.size())
+        return (const Group*)m_data[i];
+      return nullptr;
+    }
+    bool is_set() const override { return this->nrepeats() > 0; }
+    int nrepeats() const override { return m_data.size(); }
+
+    int data_to_wire(WireFormat& w, int i) const override { 
+      if (i < m_data.size())
+          return w.to_wire(*m_data[i]);
+      return -1;   
+    }
+    int data_from_wire(const WireFormat& w) override { 
+      T *data = new T; // TODO unique_ptr!
+      auto ret = w.from_wire(*data); 
+      if (ret  == 0) 
+        m_data.push_back(data);
+      return ret; 
+    }
+
+  private:
+    std::vector<const T*> m_data;
+};
+
+
+
+template <class T>
 class VarParameter : public Parameter {
 
   public:
     VarParameter(int id, bool optional=false) : Parameter(id, optional) {}
-    virtual ~VarParameter() {}
 
     void assign(T& data) {
         m_data.assign(data);
@@ -577,8 +654,6 @@ class VarParameter : public Parameter {
     }
     const T& data() { return this->m_data; }
     std::size_t item_size() const override { return this->m_data.size(); }
-    const Group* group() const override { return nullptr; }
-    bool is_scalar() const override { return false; }
 
     int data_to_wire(WireFormat& w, int) const override { return w.to_wire(m_data); }
     int data_from_wire(const WireFormat& w) override { 
@@ -602,8 +677,6 @@ class VarParameter <std::string>: public Parameter
 
     void assign(const std::string& data) { this->m_data = data; this->Parameter::set(); }
     std::string& data() { return this->m_data; }
-    const Group* group() const override { return nullptr; }
-    bool is_scalar() const override { return false; }
 
     std::size_t item_size() const override { return this->m_data.size()+1; }
     int data_to_wire(WireFormat& w, int) const override { return w.to_wire(m_data); }

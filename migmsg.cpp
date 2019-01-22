@@ -87,6 +87,10 @@ int WireFormat::to_wire(const std::string& value) {
   return buf()->putp((uint8_t *)value.c_str(), value.size()+1);
 }
 
+int WireFormat::to_wire(const void_t& value) {
+  return 0;
+}
+
 int WireFormat::to_wire(const string_t& value) {
   // TODO limit checks
   return buf()->putp((const uint8_t *)value.data(), value.size());
@@ -169,6 +173,11 @@ int WireFormat::from_wire(bool& data) const {
   data = buf()->getc();
   return 0;
 }
+
+int WireFormat::from_wire(void_t& data) const {
+  return 0;
+}
+
 
 message_ptr_t Message::factory(wire_format_ptr_t& w) {
 

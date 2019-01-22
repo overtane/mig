@@ -34,13 +34,15 @@ enum class TestEnum1 : mig::enum_t {
 struct TestGroup1 : ::mig::Group {
     ::mig::ScalarParameter<int16_t> param1{0, ::mig::OPTIONAL};
     ::mig::ScalarParameter<int32_t> param2{1, ::mig::OPTIONAL};
+    ::mig::VarParameter<::mig::string_t> param3{9, ::mig::OPTIONAL};
 
     TestGroup1() : ::mig::Group(m_params) {}
     virtual ~TestGroup1() {}
   private:
     const ::mig::parameter_container_t  m_params = {
         {0, param1},
-        {1, param2}
+        {1, param2},
+        {9, param3}
     };
 };
 
@@ -70,10 +72,11 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::EnumParameter<TestEnum1> param5{4};
 
     ::mig::GroupParameter<TestGroup1> param6{5};
-    ::mig::VarParameter<mig::string_t> param7{6};
-    ::mig::VarParameter<mig::blob_t> param8{0};
+    ::mig::VarParameter<::mig::string_t> param7{6};
+    ::mig::VarParameter<::mig::blob_t> param8{0};
     ::mig::ScalarArray<uint8_t> param9{9, ::mig::OPTIONAL };
-//    ::mig::GroupArray<TestGroup1> param10{10};
+    ::mig::GroupArray<TestGroup1> param10{10};
+    ::mig::ScalarArray<::mig::void_t> param11{11, ::mig::OPTIONAL};
 
   private:
     const ::mig::parameter_container_t m_params = {
@@ -85,7 +88,9 @@ class TestMessage1002 : public ::mig::Message {
       {6, param7},
       {0, param8},
       {8, param1},
-      {9, param9}
+      {9, param9},
+      {10, param10},
+      {11, param11}
   };
 };
 
@@ -136,23 +141,34 @@ int main() {
   // std::string str("Hello World");
   //mig::string_t str(std::string("Hello World"));
   mig::string_t str("Hello World");
-
   m2.param7.assign(str);
-  //std::cout << m2.param7.data_size() << '\n';
 
   uint8_t data[3] = { 1, 1, 1 };
-
   mig::blob_t testData(data, 3); 
-
   m2.param8.assign(testData);
 
   m2.param9[0] = 8;
   m2.param9[1] = 9;
-  m2.param9.data().push_back(10);
+  m2.param9.append(10);
 
   //::mig::ScalarArray<uint8_t> param9{9, ::mig::OPTIONAL};
   //::mig::GroupArray<TestGroup1> param9{9, ::mig::OPTIONAL};
   //::mig::VarArray<::mig::string_t> param9{9, ::mig::OPTIONAL};
+
+  TestGroup1 *t1 = new TestGroup1;;
+  t1->param1 = 16;
+  t1->param2 = -1;
+  m2.param10.append(t1);
+
+  TestGroup1 *t2 = new TestGroup1;;
+  t2->param1 = 17;
+  t2->param2 = -2;
+  mig::string_t str2("Goodbye!");
+  t2->param3.assign(str2);
+  m2.param10.append(t2);
+
+  m2.param11.append();
+  m2.param11.append();
 
   std::cout << "Param1 id "
             << m2.param1.id()
@@ -242,8 +258,8 @@ int main() {
             << "\n";
 
   m2.to_wire();
-  m2.dump(std::cout);
   m2.wire_format()->buf()->hexdump(std::cout);
+  m2.dump(std::cout);
 
   auto n = m2.wire_format()->buf()->size();
   auto p = std::make_unique<uint8_t[]>(n);

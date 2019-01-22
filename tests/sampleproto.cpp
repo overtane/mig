@@ -181,7 +181,6 @@ SampleProto::SampleProto(storage_ptr_t& p, size_t n) {
     set_size(msg_size);
 }
 
-
 wire_format_ptr_t WireFormat::factory(Message& msg) {
   wire_format_ptr_t w = std::make_unique<SampleProto>(msg);
   return w;
@@ -211,10 +210,11 @@ size_t SampleProto::wire_size(const Parameter& par) const {
 // if parameter is fixed size, wire size is derived from data type
 // for variable size parameters, data size is given before data
 
-size_t s = 0;
+  size_t s = 0;
 
-  if (par.group()) {
-    s =  par_wire_overhead + wire_size(*par.group());
+  if (par.is_group()) {
+    for (auto i=0; i<par.nrepeats(); i++)
+      s +=  par_wire_overhead + wire_size(*par.group(i));
     std::cout << "par " << par.id() << " wire size " << s << '\n';
   } else if (par.is_set()) {
     auto n = par.nrepeats();
@@ -263,7 +263,7 @@ int SampleProto::to_wire(const Parameter& par) {
   if (par.is_set())
     for (auto i=0; i < par.nrepeats(); i++ ) {
       to_wire((uint8_t)par.id());
-      if  (!par.is_scalar() && !par.group())
+      if  (!par.is_scalar() && !par.is_group())
         to_wire((uint16_t)par.data_size());
       par.data_to_wire(*this,i);
     }
@@ -376,7 +376,7 @@ void SampleProto::dump(std::ostream& os, const Parameter& par) const {
     os << '\n';
     buf()->advance(size);
 
-  } else if (par.group()) {
+  } else if (par.is_group()) {
     os << '\n';
     dump(os, *par.group(), par.id());
 
