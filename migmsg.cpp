@@ -27,6 +27,11 @@
 #include <iostream>
 #include <iomanip>
 
+std::ostream& ::mig::operator<<(std::ostream& os, const ::mig::string_t& str) {
+  os << str.data();
+  return os;
+}
+
 namespace mig {
 
 int WireFormat::to_wire(uint8_t value) {

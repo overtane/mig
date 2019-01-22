@@ -85,12 +85,20 @@ class msgbuf : public MsgBuf {
         return nullptr;
     }
 
-    size_t advance(size_t n) override { 
-        if (m_next + n - 1 <  m_size) {
+    int advance(int n) override { 
+        if (m_next + n - 1 <  m_size) 
           m_next += n;
-          return m_next;
-        }
-        return 0;
+        else
+          m_next = m_size;
+        return m_next;
+    }
+
+    int reverse(int n) override { 
+        if (m_next - n > 0)
+          m_next -= n;
+        else
+          m_next = 0; 
+        return m_next;
     }
 
     void reset() override { m_next = 0; }
@@ -142,6 +150,7 @@ class SampleProto : public WireFormat {
 
     void dump(std::ostream&, const Message&) const override;
     void dump(std::ostream&, const Group&, int) const override;
+    void dump(std::ostream&, const Parameter&) const override;
 };
 
 
@@ -191,7 +200,7 @@ size_t SampleProto::wire_size(const Message& msg) const {
 }
 
 size_t SampleProto::wire_size(const Group& group) const {
-  auto s = 1;
+  auto s = 1; // end mark
   for (auto& it : group.params())
     s += wire_size(it.second);
   return s;
@@ -202,14 +211,28 @@ size_t SampleProto::wire_size(const Parameter& par) const {
 // if parameter is fixed size, wire size is derived from data type
 // for variable size parameters, data size is given before data
 
-  if (par.is_set()) {
-    auto s = par_wire_overhead; // par id
-    if  (!par.is_scalar() && !par.group())
+size_t s = 0;
+
+  // TODO any parameter type can be repeated 
+  // repeated group etc
+  // calculate size accordingly
+  if (par.is_repeated()) {
+    s = par.nrepeats() * par_wire_overhead;
+    s += par.nrepeats() * par.size();
+    std::cout << "par " << par.id() << " wire size " << s << '\n';
+  } else if (par.group()) {
+    s =  par_wire_overhead + wire_size(*par.group());
+    std::cout << "par " << par.id() << " wire size " << s << '\n';
+  } else if (par.is_set()) {
+    s = par_wire_overhead; // par id
+    if  (!par.is_scalar())
       s += 2; // data size
-    s += par.wire_size(*this); // data
-    return s;
+    s += par.size(); // data
+    std::cout << "par " << par.id() << " wire size " << s << '\n';
+  } else {
+    std::cout << "par " << par.id() << " wire size 0\n";
   }
-  return 0;
+  return s;
 }
 
 int SampleProto::to_wire(const Message& msg) {
@@ -243,12 +266,13 @@ int SampleProto::to_wire(const Parameter& par) {
 // variable size parameter: | par id | size | data
 
   std::cout << "par: " << par.id() << '\n';
-  if (par.is_set()) {
-    to_wire((uint8_t)par.id());
-    if  (!par.is_scalar() && !par.group())
-      to_wire((uint16_t)par.size());
-    par.data_to_wire(*this);
-  }
+  if (par.is_set())
+    for (auto i=0; i < par.nrepeats(); i++ ) {
+      to_wire((uint8_t)par.id());
+      if  (!par.is_scalar() && !par.group())
+        to_wire((uint16_t)par.size());
+      par.data_to_wire(*this,i);
+    }
   return 0;
 }
 
@@ -300,7 +324,7 @@ int SampleProto::from_wire(blob_t& data) const {
   uint16_t n;
   from_wire(n);
   uint8_t *p = buf()->getp(n);
-  data.assign(p, n);
+  data.assign(p, n); // assign message buffer sub-area
   buf()->advance(n);
   return 0;
 }
@@ -309,7 +333,7 @@ int SampleProto::from_wire(string_t& data) const {
   uint16_t n;
   from_wire(n);
   const char *p = (char *)buf()->getp(n);
-  data.assign(p, n);
+  data.assign(p, n); // assign message buffer sub-area
   buf()->advance(n);
   return 0;
 }
@@ -321,6 +345,7 @@ int SampleProto::from_wire(std::string& data) const {
   const char *p = (const char *)buf()->getp(n);
   // TODO this makes a copy
   // if we want to reuse buffer area for data, string class has to be replaced
+  // use mig::string_t
   data.assign(p, n-1);
   buf()->advance(n);
   return 0;
@@ -346,45 +371,51 @@ void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
 }
 #endif
 
+void SampleProto::dump(std::ostream& os, const Parameter& par) const {
+
+  if (par.is_scalar()) {
+    auto size = par.size(); 
+    uint8_t *p = buf()->getp(size);
+    os << std::setfill('0');
+    for (auto i=0; i < size; i++, p++)
+      os << std::hex << std::setw(2) << int(*p) << ' ';
+    os << '\n';
+    buf()->advance(size);
+
+  } else if (par.group()) {
+    os << '\n';
+    dump(os, *par.group(), par.id());
+
+  } else { // variable length parameter
+    uint16_t size = 0;
+    from_wire(size);
+    uint8_t *p = buf()->getp(size);
+    for (auto i=0; i < size; i++, p++)
+      os << std::hex << std::setw(2) << int(*p) << ' ';
+    os << '\n';
+    buf()->advance(size);
+  }
+}
+
 void SampleProto::dump(std::ostream& os, const Group& group, int id) const {
 
-  uint16_t size;
   uint8_t c;
-
   while ( (c = buf()->getc()) != 0xff) {
+
+    if (dynamic_cast<const Message*>(&group))
+      // direct parameter
+      os << "- param " << std::dec  << int(c) << ": ";
+    else
+      // group parameter
+      os << "  group " << std::dec << id << '/' << int(c) << ": ";
+
     if (group.params().count(c) > 0) {
       Parameter& par = group.params().at(c);
-
-      if (dynamic_cast<const Message*>(&group))
-        // direct parameter
-        os << "- param " << std::dec  << int(c) << ": ";
-      else
-        // group parameter
-        os << "  group " << std::dec << id << '/' << int(c) << ": ";
-
-      if (par.is_scalar()) {
-        size = par.size(); 
-        uint8_t *p = buf()->getp(size);
-        os << std::setfill('0');
-        for (auto i=0; i < size; i++, p++)
-          os << std::hex << std::setw(2) << int(*p) << ' ';
-        os << '\n';
-        buf()->advance(size);
-      } else if (par.group()) {
-        os << '\n';
-        dump(os, *par.group(), c);
-      } else {
-        from_wire(size);
-        uint8_t *p = buf()->getp(size);
-        for (auto i=0; i < size; i++, p++)
-          os << std::hex << std::setw(2) << int(*p) << ' ';
-        os << '\n';
-        buf()->advance(size);
-      }
-    } else 
-      os << "invalid\n"; 
+      dump(os, par);
+    } else {
+      os << "invalid id " << std::dec << c << '\n';
+    }
   }
-  
 }
 
 void SampleProto::dump(std::ostream& os, const Message& msg) const {
@@ -402,7 +433,7 @@ void SampleProto::dump(std::ostream& os, const Message& msg) const {
   os << "Message: 0x" << std::hex << std::setw(4) << id;
   os << std::dec << ", length " << size << '(' << msg.size() << ")\n";
 
-  dump(os, dynamic_cast<const Group&>(msg), msg.id());
+  dump(os, dynamic_cast<const Group&>(msg), 0);
 }
 
 

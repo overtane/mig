@@ -70,8 +70,10 @@ class TestMessage1002 : public ::mig::Message {
     ::mig::EnumParameter<TestEnum1> param5{4};
 
     ::mig::GroupParameter<TestGroup1> param6{5};
-    ::mig::VarParameter<std::string> param7{6};
+    ::mig::VarParameter<mig::string_t> param7{6};
     ::mig::VarParameter<mig::blob_t> param8{0};
+    ::mig::ScalarArray<uint8_t> param9{9, ::mig::OPTIONAL };
+//    ::mig::GroupArray<TestGroup1> param10{10};
 
   private:
     const ::mig::parameter_container_t m_params = {
@@ -82,7 +84,8 @@ class TestMessage1002 : public ::mig::Message {
       {5, param6},
       {6, param7},
       {0, param8},
-      {8, param1}
+      {8, param1},
+      {9, param9}
   };
 };
 
@@ -106,11 +109,10 @@ void dump(std::ostream& os, const mig::Message& msg) {
 
     os << "param "
        << par.id()
-//            << ", value "
-//            << m2.param1.get() + 0
        << ", defined " << par.is_set()
        << ", optional " << par.is_optional()
        << ", size " << par.size()
+       << ", repeats " << par.nrepeats()
        << '\n';
   }
 
@@ -125,16 +127,15 @@ int main() {
   
   m2.param1.assign(8);
   m2.param2.assign(true);
-  //m2.param3.set(12345567);
-  m2.param4.set();
+  m2.param4.set(); // void_t
 
   m2.param5 = TestEnum1::VALUE2;
-  //std::cout << m2.param7.size() << '\n';
-
   m2.param6.data().param1.assign(2);
-  m2.param6.data().param2.assign(1234567890);
+  m2.param6.data().param2 = 1234567890;
 
-  std::string str("Hello World");
+  // std::string str("Hello World");
+  //mig::string_t str(std::string("Hello World"));
+  mig::string_t str("Hello World");
 
   m2.param7.assign(str);
   //std::cout << m2.param7.size() << '\n';
@@ -144,7 +145,15 @@ int main() {
   mig::blob_t testData(data, 3); 
 
   m2.param8.assign(testData);
- 
+
+  m2.param9[0] = 8;
+  m2.param9[1] = 9;
+  m2.param9.data().push_back(10);
+
+  //::mig::ScalarArray<uint8_t> param9{9, ::mig::OPTIONAL};
+  //::mig::GroupArray<TestGroup1> param9{9, ::mig::OPTIONAL};
+  //::mig::VarArray<::mig::string_t> param9{9, ::mig::OPTIONAL};
+
   std::cout << "Param1 id "
             << m2.param1.id()
             << ", value "
@@ -217,6 +226,15 @@ int main() {
             << ", size " << m2.param8.size()
             << '\n';
 
+  std::cout << "Param9 id "
+            << m2.param9.id()
+            << ", value "
+            << " reference" // get returns reference. What if not defined?
+            << ", defined " << m2.param9.is_set()
+            << ", optional " << m2.param9.is_optional()
+            << ", size " << m2.param9.size()
+            << '\n';
+
   std::cout << "Message "
             << ((m2.is_valid()) ? "is valid " : "not valid ")
             << "size "
@@ -225,6 +243,7 @@ int main() {
 
   m2.to_wire();
   m2.dump(std::cout);
+  m2.wire_format()->buf()->hexdump(std::cout);
 
   auto n = m2.wire_format()->buf()->size();
   auto p = std::make_unique<uint8_t[]>(n);
