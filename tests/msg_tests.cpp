@@ -50,7 +50,7 @@ TEST_F(MessageTests, Enum1)
 TEST_F(MessageTests, Message1001) 
 {
   EXPECT_EQ(m1.nparams(), 0);
-  EXPECT_EQ(m1.size(), 0);
+  EXPECT_EQ(m1.data_size(), 0);
   EXPECT_EQ(m1.is_valid(), true);
   EXPECT_EQ(m1.is_set(), true);
   EXPECT_EQ(m1.id(), 0x1001);
@@ -62,7 +62,7 @@ TEST_F(MessageTests, Message1002)
 
   // message's initial state
   EXPECT_EQ(m2.nparams(), 6);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_valid(), false);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.id(), 0x1002);
@@ -71,37 +71,43 @@ TEST_F(MessageTests, Message1002)
   EXPECT_EQ(m2.param1.is_optional(), false);
   EXPECT_EQ(m2.param1.id(), 0);
   EXPECT_EQ(m2.param1.is_set(), false);
-  EXPECT_EQ(m2.param1.size(), 0);
+  EXPECT_EQ(m2.param1.data_size(), 0);
+  EXPECT_EQ(m2.param1.item_size(), 0);
   EXPECT_EQ(m2.param1.is_valid(), false);
   EXPECT_EQ(m2.param1.is_scalar(), true);
   EXPECT_EQ(m2.param2.is_optional(), false);
   EXPECT_EQ(m2.param2.id(), 1);
   EXPECT_EQ(m2.param2.is_set(), false);
-  EXPECT_EQ(m2.param2.size(), 1);
+  EXPECT_EQ(m2.param2.item_size(), 1);
+  EXPECT_EQ(m2.param2.data_size(), 1);
   EXPECT_EQ(m2.param2.is_valid(), false);
   EXPECT_EQ(m2.param2.is_scalar(), true);
   EXPECT_EQ(m2.param3.is_optional(), false);
   EXPECT_EQ(m2.param3.id(), 2);
   EXPECT_EQ(m2.param3.is_set(), false);
-  EXPECT_EQ(m2.param3.size(), 2);
+  EXPECT_EQ(m2.param3.data_size(), 2);
+  EXPECT_EQ(m2.param3.item_size(), 2);
   EXPECT_EQ(m2.param3.is_valid(), false);
   EXPECT_EQ(m2.param3.is_scalar(), true);
   EXPECT_EQ(m2.param4.is_optional(), true);
   EXPECT_EQ(m2.param4.id(), 3);
   EXPECT_EQ(m2.param4.is_set(), false);
-  EXPECT_EQ(m2.param4.size(), 4);
+  EXPECT_EQ(m2.param4.data_size(), 4);
+  EXPECT_EQ(m2.param4.item_size(), 4);
   EXPECT_EQ(m2.param4.is_valid(), true);
   EXPECT_EQ(m2.param4.is_scalar(), true);
   EXPECT_EQ(m2.param5.is_optional(), true);
   EXPECT_EQ(m2.param5.id(), 12);
   EXPECT_EQ(m2.param5.is_set(), false);
-  EXPECT_EQ(m2.param5.size(), 1);
+  EXPECT_EQ(m2.param5.item_size(), 1);
+  EXPECT_EQ(m2.param5.data_size(), 1);
   EXPECT_EQ(m2.param5.is_valid(), true);
   EXPECT_EQ(m2.param5.is_scalar(), true);
   EXPECT_EQ(m2.param6.is_optional(), true);
   EXPECT_EQ(m2.param6.id(), 13);
   EXPECT_EQ(m2.param6.is_set(), false);
-  EXPECT_EQ(m2.param6.size(), 1);
+  EXPECT_EQ(m2.param6.item_size(), 1);
+  EXPECT_EQ(m2.param6.data_size(), 1);
   EXPECT_EQ(m2.param6.is_valid(), true);
   EXPECT_EQ(m2.param6.is_scalar(), true);
 
@@ -109,8 +115,9 @@ TEST_F(MessageTests, Message1002)
   m2.param1.set();
   EXPECT_EQ(m2.param1.is_set(), true);
   EXPECT_EQ(m2.param1.is_valid(), true);
-  EXPECT_EQ(m2.param1.size(), 0);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.param1.item_size(), 0);
+  EXPECT_EQ(m2.param1.data_size(), 0);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.is_valid(), false);
 
@@ -118,10 +125,11 @@ TEST_F(MessageTests, Message1002)
   m2.param2 = 42;
   EXPECT_EQ(m2.param2.is_set(), true);
   EXPECT_EQ(m2.param2.is_valid(), true);
-  EXPECT_EQ(m2.param2.size(), 1);
+  EXPECT_EQ(m2.param2.item_size(), 1);
+  EXPECT_EQ(m2.param2.data_size(), 1);
   EXPECT_EQ(m2.param2.data(), 42);
   EXPECT_EQ((m2.param2==42), true);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_set(), false);
   EXPECT_EQ(m2.is_valid(), false);
 
@@ -129,9 +137,10 @@ TEST_F(MessageTests, Message1002)
   m2.param3.assign(-12345);
   EXPECT_EQ(m2.param3.is_set(), true);
   EXPECT_EQ(m2.param3.is_valid(), true);
-  EXPECT_EQ(m2.param3.size(), 2);
+  EXPECT_EQ(m2.param3.item_size(), 2);
+  EXPECT_EQ(m2.param3.data_size(), 2);
   EXPECT_EQ(m2.param3.data(), -12345);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   m2.param3 = 12; // reassign value
   EXPECT_EQ(m2.param3.data(), 12);
 
@@ -142,14 +151,15 @@ TEST_F(MessageTests, Message1002)
   m2.param4 = 7654321;
   EXPECT_EQ(m2.param4.is_set(), true);
   EXPECT_EQ(m2.param4.is_valid(), true);
-  EXPECT_EQ(m2.param4.size(), 4);
+  EXPECT_EQ(m2.param4.item_size(), 4);
+  EXPECT_EQ(m2.param4.data_size(), 4);
   EXPECT_EQ((m2.param4==7654321), true);
   EXPECT_EQ((m2.param4!=7654321), false);
   EXPECT_EQ((m2.param4>=7654321), true);
   EXPECT_EQ((m2.param4<=7654321), true);
   EXPECT_EQ((m2.param4>7654321), false);
   EXPECT_EQ((m2.param4<7654321), false);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
 
@@ -157,11 +167,12 @@ TEST_F(MessageTests, Message1002)
   m2.param5 = TestEnum1::VALUE2;
   EXPECT_EQ(m2.param5.is_set(), true);
   EXPECT_EQ(m2.param5.is_valid(), true);
-  EXPECT_EQ(m2.param5.size(), 1);
+  EXPECT_EQ(m2.param5.item_size(), 1);
+  EXPECT_EQ(m2.param5.data_size(), 1);
   EXPECT_EQ(m2.param5.data(), TestEnum1::VALUE2);
   EXPECT_EQ((m2.param5==TestEnum1::VALUE2), true);
   EXPECT_EQ((m2.param5!=TestEnum1::VALUE2), false);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
   m2.param5 = TestEnum1::VALUE1;
@@ -171,9 +182,10 @@ TEST_F(MessageTests, Message1002)
   m2.param6 = false;
   EXPECT_EQ(m2.param6.is_set(), true);
   EXPECT_EQ(m2.param6.is_valid(), true);
-  EXPECT_EQ(m2.param6.size(), 1);
+  EXPECT_EQ(m2.param6.item_size(), 1);
+  EXPECT_EQ(m2.param6.data_size(), 1);
   EXPECT_EQ(m2.param6.data(), false);
-  EXPECT_EQ(m2.size(), 9);
+  EXPECT_EQ(m2.data_size(), 9);
   EXPECT_EQ(m2.is_set(), true);
   EXPECT_EQ(m2.is_valid(), true);
   m2.param6 = true;
@@ -189,13 +201,15 @@ TEST_F(MessageTests, Message1003_blob)
   // blob data tests
 
   EXPECT_EQ(m3.param2.is_set(), false);
-  EXPECT_EQ(m3.param2.size(), 0);
+  EXPECT_EQ(m3.param2.item_size(), 0);
+  EXPECT_EQ(m3.param2.data_size(), 0);
 
   uint8_t a[] = { 1, 2, 3 };
   ::mig::blob_t b(a, 3);
   m3.param2.assign(b);
   EXPECT_EQ(m3.param2.is_set(), true);
-  EXPECT_EQ(m3.param2.size(), 3);
+  EXPECT_EQ(m3.param2.item_size(), 3);
+  EXPECT_EQ(m3.param2.data_size(), 3);
   EXPECT_EQ(m3.param2.data().equals(b), true);
   uint8_t a2[] = { 1, 2, 3 };
   ::mig::blob_t b2(a2, 3);

@@ -213,21 +213,15 @@ size_t SampleProto::wire_size(const Parameter& par) const {
 
 size_t s = 0;
 
-  // TODO any parameter type can be repeated 
-  // repeated group etc
-  // calculate size accordingly
-  if (par.is_repeated()) {
-    s = par.nrepeats() * par_wire_overhead;
-    s += par.nrepeats() * par.size();
-    std::cout << "par " << par.id() << " wire size " << s << '\n';
-  } else if (par.group()) {
+  if (par.group()) {
     s =  par_wire_overhead + wire_size(*par.group());
     std::cout << "par " << par.id() << " wire size " << s << '\n';
   } else if (par.is_set()) {
-    s = par_wire_overhead; // par id
+    auto n = par.nrepeats();
+    s = n * par_wire_overhead; // parameter id
     if  (!par.is_scalar())
-      s += 2; // data size
-    s += par.size(); // data
+      s += n * 2; // data length field before data
+    s += par.data_size(); // data length
     std::cout << "par " << par.id() << " wire size " << s << '\n';
   } else {
     std::cout << "par " << par.id() << " wire size 0\n";
@@ -270,7 +264,7 @@ int SampleProto::to_wire(const Parameter& par) {
     for (auto i=0; i < par.nrepeats(); i++ ) {
       to_wire((uint8_t)par.id());
       if  (!par.is_scalar() && !par.group())
-        to_wire((uint16_t)par.size());
+        to_wire((uint16_t)par.data_size());
       par.data_to_wire(*this,i);
     }
   return 0;
@@ -374,7 +368,7 @@ void SampleProto::hexdump(std::ostream& os, const Message& msg) const {
 void SampleProto::dump(std::ostream& os, const Parameter& par) const {
 
   if (par.is_scalar()) {
-    auto size = par.size(); 
+    auto size = par.item_size(); 
     uint8_t *p = buf()->getp(size);
     os << std::setfill('0');
     for (auto i=0; i < size; i++, p++)
@@ -431,7 +425,7 @@ void SampleProto::dump(std::ostream& os, const Message& msg) const {
 
   os << std::setfill('0');
   os << "Message: 0x" << std::hex << std::setw(4) << id;
-  os << std::dec << ", length " << size << '(' << msg.size() << ")\n";
+  os << std::dec << ", length " << size << '(' << msg.data_size() << ")\n";
 
   dump(os, dynamic_cast<const Group&>(msg), 0);
 }

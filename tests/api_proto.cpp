@@ -100,7 +100,7 @@ void dump(std::ostream& os, const mig::Message& msg) {
      << "0x" << std::hex << msg.id()
      << ((msg.is_valid()) ? " is valid " : "not valid ")
      << "size "
-     << std::dec << msg.size()
+     << std::dec << msg.data_size()
      << "\n";
 
   for (auto& it : msg.params()) {
@@ -111,7 +111,7 @@ void dump(std::ostream& os, const mig::Message& msg) {
        << par.id()
        << ", defined " << par.is_set()
        << ", optional " << par.is_optional()
-       << ", size " << par.size()
+       << ", size " << par.data_size()
        << ", repeats " << par.nrepeats()
        << '\n';
   }
@@ -138,7 +138,7 @@ int main() {
   mig::string_t str("Hello World");
 
   m2.param7.assign(str);
-  //std::cout << m2.param7.size() << '\n';
+  //std::cout << m2.param7.data_size() << '\n';
 
   uint8_t data[3] = { 1, 1, 1 };
 
@@ -160,7 +160,7 @@ int main() {
             << m2.param1.data()
             << ", defined " << m2.param1.is_set()
             << ", optional " << m2.param1.is_optional()
-            << ", size " << m2.param1.size()
+            << ", size " << m2.param1.data_size()
             << '\n';
 
   std::cout << "Param2 id "
@@ -169,7 +169,7 @@ int main() {
             << m2.param2.data() + 0
             << ", defined " << m2.param2.is_set()
             << ", optional " << m2.param2.is_optional()
-            << ", size " << m2.param2.size()
+            << ", size " << m2.param2.data_size()
             << '\n';
 
   std::cout << "Param3 id "
@@ -178,7 +178,7 @@ int main() {
             << m2.param3.data() + 0
             << ", defined " << m2.param3.is_set()
             << ", optional " << m2.param3.is_optional()
-            << ", size " << m2.param3.size()
+            << ", size " << m2.param3.data_size()
             << '\n';
 
   std::cout << "Param4 id "
@@ -187,7 +187,7 @@ int main() {
             << " none "  
             << ", defined " << m2.param4.is_set()
             << ", optional " << m2.param4.is_optional()
-            << ", size " << m2.param4.size()
+            << ", size " << m2.param4.data_size()
             << '\n';
 
   std::cout << "Param5 id "
@@ -196,7 +196,7 @@ int main() {
             << int(m2.param5.data()) 
             << ", defined " << m2.param5.is_set()
             << ", optional " << m2.param5.is_optional()
-            << ", size " << m2.param5.size()
+            << ", size " << m2.param5.data_size()
             << '\n';
 
   std::cout << "Param6 id "
@@ -205,7 +205,7 @@ int main() {
             << " group" // get returns reference. What if not defined?
             << ", defined " << m2.param6.is_set()
             << ", optional " << m2.param6.is_optional()
-            << ", size " << m2.param6.size()
+            << ", size " << m2.param6.data_size()
             << '\n';
 
   std::cout << "Param7 id "
@@ -214,7 +214,7 @@ int main() {
             << m2.param7.data()
             << ", defined " << m2.param7.is_set()
             << ", optional " << m2.param7.is_optional()
-            << ", size " << m2.param7.size()
+            << ", size " << m2.param7.data_size()
             << '\n';
 
   std::cout << "Param8 id "
@@ -223,7 +223,7 @@ int main() {
             << " reference" // get returns reference. What if not defined?
             << ", defined " << m2.param8.is_set()
             << ", optional " << m2.param8.is_optional()
-            << ", size " << m2.param8.size()
+            << ", size " << m2.param8.data_size()
             << '\n';
 
   std::cout << "Param9 id "
@@ -232,13 +232,13 @@ int main() {
             << " reference" // get returns reference. What if not defined?
             << ", defined " << m2.param9.is_set()
             << ", optional " << m2.param9.is_optional()
-            << ", size " << m2.param9.size()
+            << ", size " << m2.param9.data_size()
             << '\n';
 
   std::cout << "Message "
             << ((m2.is_valid()) ? "is valid " : "not valid ")
             << "size "
-            << m2.size()
+            << m2.data_size()
             << "\n";
 
   m2.to_wire();

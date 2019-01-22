@@ -346,7 +346,8 @@ class Parameter {
     virtual const Group* group() const = 0;
     virtual int nrepeats() const { return 1; }
     virtual bool is_set() const { return this->m_is_set; }
-    virtual std::size_t size() const = 0;
+    virtual std::size_t item_size() const = 0;
+    virtual std::size_t data_size() const { return nrepeats() * item_size(); }
     virtual bool is_valid() const { return this->is_set() || this->is_optional(); }
     virtual int data_to_wire(WireFormat&, int i=0) const = 0;
     virtual int data_from_wire(const WireFormat&) = 0;
@@ -371,9 +372,9 @@ class Group {
         for (auto& it : this->m_params) if (!it.second.is_valid()) return false;
         return true;
     }
-    std::size_t size() const {
+    std::size_t data_size() const {
         std::size_t s = 0;
-        for (auto& it : this->m_params) s += it.second.size();
+        for (auto& it : this->m_params) s += it.second.data_size();
         return s;
     } 
     bool is_set() const { return this->is_valid(); } // group is set if it is valid
@@ -438,7 +439,7 @@ class ScalarParameter : public Parameter {
 
     void assign(const T& value) { this->m_data = value; this->Parameter::set(); }
     const T& data() const { return this->m_data; }
-    size_t size() const override { return sizeof(T); }
+    size_t item_size() const override { return sizeof(T); }
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
     //bool is_repeated() const override { return false; }
@@ -471,7 +472,7 @@ class ScalarArray : public Parameter {
     }
     const T& data(int i) const { return this->m_data[i]; }
     std::vector<T>& data() { return this->m_data; }
-    size_t size() const override { return sizeof(T); }
+    size_t item_size() const override { return sizeof(T); }
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
     bool is_set() const override { return this->m_data.size() > 0; }
@@ -501,7 +502,7 @@ class ScalarParameter <void_t> : public Parameter {
   public:
     ScalarParameter(int id, bool optional=false) : Parameter(id, optional) {}
 
-    std::size_t size() const override { return 0; }
+    std::size_t item_size() const override { return 0; }
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
 
@@ -520,7 +521,7 @@ class EnumParameter : public Parameter {
 
     void assign(T value) { this->m_data = value; this->Parameter::set(); }
     const T& data() const { return this->m_data; }
-    std::size_t size() const override { return sizeof(mig::enum_t); }
+    std::size_t item_size() const override { return sizeof(mig::enum_t); }
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return true; }
 
@@ -540,7 +541,7 @@ class EnumParameter : public Parameter {
 };
 
 template <class T>
-class GroupParameter : public Parameter, public Group {   
+class GroupParameter : public Parameter {   
 
   public:
     GroupParameter(int id, bool optional=false) : Parameter(id, optional) {} 
@@ -548,7 +549,7 @@ class GroupParameter : public Parameter, public Group {
 
     //void assign(const T& group) // TODO this could be a deep copy operation 
     T& data() { return this->m_data; } // non-const return so that group params may be accessed
-    std::size_t size() const override { return this->m_data.size(); }
+    std::size_t item_size() const override { return this->m_data.data_size(); }
     const Group* group() const override { return (Group*)&m_data; }
     bool is_scalar() const override { return false; }
 
@@ -559,7 +560,7 @@ class GroupParameter : public Parameter, public Group {
     int data_from_wire(const WireFormat& w) override { return w.from_wire((Group&)(m_data)); }
 
   private:
-    //T m_data;
+    T m_data;
 
 };
 
@@ -575,7 +576,7 @@ class VarParameter : public Parameter {
         this->Parameter::set();
     }
     const T& data() { return this->m_data; }
-    std::size_t size() const override { return this->m_data.size(); }
+    std::size_t item_size() const override { return this->m_data.size(); }
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return false; }
 
@@ -604,7 +605,7 @@ class VarParameter <std::string>: public Parameter
     const Group* group() const override { return nullptr; }
     bool is_scalar() const override { return false; }
 
-    std::size_t size() const override { return this->m_data.size()+1; }
+    std::size_t item_size() const override { return this->m_data.size()+1; }
     int data_to_wire(WireFormat& w, int) const override { return w.to_wire(m_data); }
     int data_from_wire(const WireFormat& w) override {
       Parameter::set(); 
